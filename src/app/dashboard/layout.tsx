@@ -2,7 +2,7 @@
 
 import { useAuthStore } from '@/store/authStore';
 import { useRouter, usePathname } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { 
   LayoutDashboard, 
   Package, 
@@ -24,14 +24,19 @@ export default function DashboardLayout({
   const { user, logout } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
+  const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
-    if (!user) {
+    setIsHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (isHydrated && !user) {
       router.push('/login');
     }
-  }, [user, router]);
+  }, [user, router, isHydrated]);
 
-  if (!user) return null;
+  if (!isHydrated || !user) return null;
 
   const menuItems = [
     { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
