@@ -54,18 +54,30 @@ export default function POSPage() {
 
   const total = cart.reduce((acc, item) => acc + item.unitPrice * item.quantity, 0);
 
+  const [isProcessing, setIsProcessing] = useState(false);
+
   const handleCheckout = async (method: string) => {
-    if (cart.length === 0) return;
+    if (cart.length === 0 || isProcessing) return;
+    
+    setIsProcessing(true);
     try {
-      await api.post('/sales', {
-        items: cart,
+      const payload = {
+        items: cart.map(item => ({
+          productId: item.productId,
+          quantity: Number(item.quantity),
+          unitPrice: Number(item.unitPrice)
+        })),
         paymentMethod: method,
-      });
+      };
+      await api.post('/sales', payload);
       alert('Venta realizada con éxito');
       setCart([]);
       fetchProducts(); // Refresh stock
     } catch (err) {
+      console.error('Checkout error:', err);
       alert('Error al realizar la venta');
+    } finally {
+      setIsProcessing(false);
     }
   };
 

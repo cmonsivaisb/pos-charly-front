@@ -11,7 +11,8 @@ import {
   LogOut,
   Menu,
   ChevronRight,
-  Users
+  Users,
+  Receipt
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -35,6 +36,7 @@ export default function DashboardLayout({
   const menuItems = [
     { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
     { name: 'POS', icon: ShoppingCart, href: '/dashboard/pos' },
+    { name: 'Ventas', icon: Receipt, href: '/dashboard/sales' },
     { name: 'Productos', icon: Package, href: '/dashboard/products' },
     { name: 'Suscripción', icon: CreditCard, href: '/dashboard/subscription' },
   ];
