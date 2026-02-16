@@ -16,6 +16,7 @@ import {
   CreditCard
 } from 'lucide-react';
 import Link from 'next/link';
+import { DashboardSkeleton } from '@/components/skeletons/DashboardSkeleton';
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
@@ -36,6 +37,10 @@ export default function DashboardPage() {
       setLoading(false);
     }
   };
+
+  if (loading) {
+    return <DashboardSkeleton />;
+  }
 
   const stats = [
     { name: 'Ventas de Hoy', value: `$${Number(data?.todaySales || 0).toFixed(2)}`, icon: TrendingUp, color: 'primary' },

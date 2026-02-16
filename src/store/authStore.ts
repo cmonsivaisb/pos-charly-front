@@ -24,7 +24,7 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       accessToken: null,
       refreshToken: null,
-      theme: 'light',
+      theme: 'lightretail', // Corrected this line
       setAuth: (user, accessToken, refreshToken) => {
         localStorage.setItem('accessToken', accessToken);
         set({ user, accessToken, refreshToken });

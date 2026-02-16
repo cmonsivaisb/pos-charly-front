@@ -1,65 +1,49 @@
-import Image from "next/image";
+import { Hero } from '@/components/landing/Hero';
+import { Features } from '@/components/landing/Features';
+import { Pricing } from '@/components/landing/Pricing';
+import { Footer } from '@/components/landing/Footer';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { Store } from 'lucide-react';
+import Link from 'next/link';
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="min-h-screen font-sans selection:bg-primary selection:text-white bg-base-100 text-base-content">
+      {/* Navbar */}
+      <nav className="absolute top-0 w-full z-50 border-b border-base-content/10 bg-base-100/80 backdrop-blur-sm">
+        <div className="container mx-auto px-6 h-20 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2 group">
+            <div className="bg-primary p-2 rounded shadow-retail group-hover:scale-110 transition-transform">
+              <Store className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-xl font-display font-bold text-base-content tracking-tight">RETAIL<span className="text-primary">POS</span></span>
+          </Link>
+          
+          <div className="flex items-center gap-6">
+            <div className="hidden md:flex items-center gap-6 text-sm font-bold text-base-content/70 uppercase tracking-widest">
+              <a href="#features" className="hover:text-base-content transition-colors">Producto</a>
+              <a href="#pricing" className="hover:text-base-content transition-colors">Precios</a>
+            </div>
+            <div className="w-px h-6 bg-base-content/20 hidden md:block"></div>
+            <Link href="/login" className="hidden md:flex btn btn-sm btn-ghost text-base-content hover:bg-base-content/10 uppercase font-bold tracking-widest">
+              Iniciar Sesión
+            </Link>
+            <Link href="/register" className="btn btn-sm btn-primary text-white shadow-retail shadow-black/20 uppercase font-bold tracking-widest">
+              Comenzar
+            </Link>
+          </div>
+          {/* Moved ThemeToggle outside the group of other links/buttons */}
+          <div className="ml-4 relative z-10"><ThemeToggle /></div> 
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+      </nav>
+
+      <main>
+        <Hero />
+        <Features id="features" />
+        <Pricing id="pricing" />
       </main>
+
+      <Footer />
     </div>
   );
 }
