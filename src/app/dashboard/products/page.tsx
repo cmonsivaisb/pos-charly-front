@@ -7,6 +7,7 @@ import { Package, Plus, Search, Minus, PlusCircle, Filter, MoreHorizontal, Edit2
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [viewingProduct, setViewingProduct] = useState<any>(null);
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [deletingProduct, setDeletingProduct] = useState<any>(null);
   const [search, setSearch] = useState('');
@@ -47,6 +48,11 @@ export default function ProductsPage() {
   const handleAdd = () => {
     setEditingProduct(null);
     (window as any).product_modal.showModal();
+  };
+
+  const handleView = (product: any) => {
+    setViewingProduct(product);
+    (window as any).view_modal.showModal();
   };
 
   const confirmDelete = (product: any) => {
@@ -175,7 +181,7 @@ export default function ProductsPage() {
         <div className="bg-white dark:bg-slate-800 p-6 border-b-4 border-slate-700 shadow-retail text-slate-900 dark:text-white">
           <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">Valor Inventario</p>
           <p className="text-2xl font-display font-bold">
-            ${products.reduce((acc, p:any) => acc + (p.costPrice * p.stock), 0).toLocaleString()}
+            ${products.reduce((acc, p:any) => acc + (Number(p.priceTotal) * Number(p.stock)), 0).toLocaleString()}
           </p>
         </div>
         <div className="bg-white dark:bg-slate-800 p-6 border-b-4 border-slate-700 shadow-retail text-slate-900 dark:text-white">
@@ -328,6 +334,9 @@ export default function ProductsPage() {
                     </td>
                     <td className="text-center">
                       <div className="flex justify-center gap-2 transition-opacity">
+                        <button className="btn btn-square btn-sm bg-base-200 border-base-300 hover:text-primary hover:bg-base-300" onClick={() => handleView(p)} title="Ver detalles">
+                          <PackageSearch className="w-4 h-4" />
+                        </button>
                         <button className="btn btn-square btn-sm bg-base-200 border-base-300 hover:text-primary hover:bg-base-300" onClick={() => handleEdit(p)} title="Editar">
                           <Edit2 className="w-4 h-4" />
                         </button>
@@ -400,6 +409,76 @@ export default function ProductsPage() {
         </form>
       </dialog>
 
+      <dialog id="view_modal" className="modal modal-bottom sm:modal-middle">
+        <div className="modal-box max-w-2xl bg-base-100 p-0 border-2 border-primary">
+          <div className="bg-primary p-6 flex justify-between items-center text-white">
+            <h3 className="font-display font-bold text-xl uppercase tracking-tighter">Detalles del Producto</h3>
+            <button className="btn btn-ghost btn-sm text-white" onClick={() => (window as any).view_modal.close()}>✕</button>
+          </div>
+          {viewingProduct && (
+            <div className="p-8">
+              <div className="flex flex-col md:flex-row gap-8">
+                <div className="w-full md:w-1/2 aspect-square bg-base-200 border-2 border-base-300 rounded overflow-hidden">
+                  <img 
+                    src={viewingProduct.imagePath ? `http://localhost:3001/${viewingProduct.imagePath.replace(/\\/g, '/')}` : 'https://placehold.co/400x400?text=Sin+Imagen'} 
+                    alt={viewingProduct.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="w-full md:w-1/2 space-y-4">
+                  <div>
+                    <h4 className="text-[10px] font-bold text-primary uppercase tracking-widest">Nombre</h4>
+                    <p className="text-xl font-display font-bold uppercase">{viewingProduct.name}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">SKU</h4>
+                      <p className="font-mono font-bold">{viewingProduct.sku || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Barcode</h4>
+                      <p className="font-mono font-bold">{viewingProduct.barcode || 'N/A'}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Descripción</h4>
+                    <p className="text-sm">{viewingProduct.description || 'Sin descripción disponible.'}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Marca</h4>
+                      <p className="text-sm font-bold uppercase">{viewingProduct.brand || 'Genérico'}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Modelo</h4>
+                      <p className="text-sm font-bold uppercase">{viewingProduct.model || 'N/A'}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-3 gap-4 mt-8 pt-8 border-t border-base-300">
+                <div className="text-center">
+                  <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Stock Actual</h4>
+                  <p className="text-2xl font-display font-bold text-primary">{viewingProduct.stock}</p>
+                </div>
+                <div className="text-center">
+                  <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Precio Venta</h4>
+                  <p className="text-2xl font-display font-bold text-primary">${Number(viewingProduct.priceTotal).toFixed(2)}</p>
+                </div>
+                <div className="text-center">
+                  <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Costo</h4>
+                  <p className="text-2xl font-display font-bold text-slate-500">${Number(viewingProduct.costPrice).toFixed(2)}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+        <form method="dialog" className="modal-backdrop bg-slate-900/80 backdrop-blur-sm">
+          <button>close</button>
+        </form>
+      </dialog>
+
       <dialog id="product_modal" className="modal modal-bottom sm:modal-middle overflow-y-auto">
         <div className="modal-box max-w-2xl bg-base-100 p-0 border-2 border-primary my-8">
           <div className="bg-primary p-6 flex justify-between items-center text-white sticky top-0 z-10">
@@ -430,6 +509,17 @@ function ProductForm({ onSuccess, product }: { onSuccess: () => void, product?: 
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState(product?.priceInputMode || 'INCLUDES_TAX');
   const [file, setFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setPreviewUrl(null);
+    }
+  }, [file]);
 
   useEffect(() => {
     if (product) {
@@ -505,6 +595,10 @@ function ProductForm({ onSuccess, product }: { onSuccess: () => void, product?: 
               <label className="label py-1"><span className="label-text font-bold text-xs uppercase text-slate-500">Nombre Oficial</span></label>
               <input name="name" type="text" className="input input-bordered h-12 bg-base-200 border-none font-bold text-sm uppercase tracking-wide" defaultValue={product?.name} required />
             </div>
+            <div className="form-control col-span-2">
+              <label className="label py-1"><span className="label-text font-bold text-xs uppercase text-slate-500">Descripción</span></label>
+              <textarea name="description" className="textarea textarea-bordered bg-base-200 border-none font-bold text-sm" defaultValue={product?.description}></textarea>
+            </div>
             <div className="form-control">
               <label className="label py-1"><span className="label-text font-bold text-xs uppercase text-slate-500">SKU (Interno)</span></label>
               <input name="sku" type="text" className="input input-bordered h-12 bg-base-200 border-none font-bold text-sm" defaultValue={product?.sku} />
@@ -512,6 +606,22 @@ function ProductForm({ onSuccess, product }: { onSuccess: () => void, product?: 
             <div className="form-control">
               <label className="label py-1"><span className="label-text font-bold text-xs uppercase text-slate-500">Código de Barras</span></label>
               <input name="barcode" type="text" className="input input-bordered h-12 bg-base-200 border-none font-bold text-sm" defaultValue={product?.barcode} />
+            </div>
+            <div className="form-control">
+              <label className="label py-1"><span className="label-text font-bold text-xs uppercase text-slate-500">Marca</span></label>
+              <input name="brand" type="text" className="input input-bordered h-12 bg-base-200 border-none font-bold text-sm uppercase" defaultValue={product?.brand} />
+            </div>
+            <div className="form-control">
+              <label className="label py-1"><span className="label-text font-bold text-xs uppercase text-slate-500">Modelo</span></label>
+              <input name="model" type="text" className="input input-bordered h-12 bg-base-200 border-none font-bold text-sm uppercase" defaultValue={product?.model} />
+            </div>
+            <div className="form-control">
+              <label className="label py-1"><span className="label-text font-bold text-xs uppercase text-slate-500">Presentación / Empaque</span></label>
+              <input name="packaging" type="text" className="input input-bordered h-12 bg-base-200 border-none font-bold text-sm uppercase" defaultValue={product?.packaging} placeholder="Caja, Pieza, etc." />
+            </div>
+            <div className="form-control">
+              <label className="label py-1"><span className="label-text font-bold text-xs uppercase text-slate-500">Proveedor</span></label>
+              <input name="supplierName" type="text" className="input input-bordered h-12 bg-base-200 border-none font-bold text-sm uppercase" defaultValue={product?.supplierName} />
             </div>
           </div>
         </div>
@@ -578,8 +688,24 @@ function ProductForm({ onSuccess, product }: { onSuccess: () => void, product?: 
 
         {/* Image Section */}
         <div className="col-span-2 pt-4 border-t border-base-300">
-           <label className="label py-1"><span className="label-text font-bold text-xs uppercase text-slate-500">Imagen Representativa</span></label>
-           <input type="file" className="file-input file-input-bordered w-full h-12 bg-base-200 border-none" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+          <label className="label py-1"><span className="label-text font-bold text-xs uppercase text-slate-500">Imagen Representativa</span></label>
+          <div className="flex gap-4 items-start">
+            <div className="w-24 h-24 bg-base-200 border-2 border-dashed border-base-300 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
+              {previewUrl ? (
+                <img src={previewUrl} className="w-full h-full object-cover" alt="Preview" />
+              ) : product?.imagePath ? (
+                <img src={`http://localhost:3001/${product.imagePath.replace(/\\/g, '/')}`} className="w-full h-full object-cover" alt="Current" />
+              ) : (
+                <Package className="w-8 h-8 opacity-20" />
+              )}
+            </div>
+            <input 
+              type="file" 
+              className="file-input file-input-bordered flex-1 h-12 bg-base-200 border-none" 
+              accept="image/*"
+              onChange={(e) => setFile(e.target.files?.[0] || null)} 
+            />
+          </div>
         </div>
       </div>
 
