@@ -7,6 +7,7 @@ import { Package, Plus, Search } from 'lucide-react';
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [editingProduct, setEditingProduct] = useState<any>(null);
 
   useEffect(() => {
     fetchProducts();
@@ -23,13 +24,23 @@ export default function ProductsPage() {
     }
   };
 
+  const handleEdit = (product: any) => {
+    setEditingProduct(product);
+    (window as any).product_modal.showModal();
+  };
+
+  const handleAdd = () => {
+    setEditingProduct(null);
+    (window as any).product_modal.showModal();
+  };
+
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold flex items-center gap-2">
           <Package className="w-8 h-8" /> Productos
         </h1>
-        <button className="btn btn-primary" onClick={() => (window as any).add_product_modal.showModal()}>
+        <button className="btn btn-primary" onClick={handleAdd}>
           <Plus className="w-4 h-4 mr-2" /> Nuevo Producto
         </button>
       </div>
@@ -47,6 +58,7 @@ export default function ProductsPage() {
             <table className="table table-zebra w-full">
               <thead>
                 <tr>
+                  <th>Imagen</th>
                   <th>Nombre</th>
                   <th>SKU</th>
                   <th>Costo</th>
@@ -57,13 +69,29 @@ export default function ProductsPage() {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={6} className="text-center py-4">Cargando...</td></tr>
+                  <tr><td colSpan={7} className="text-center py-4">Cargando...</td></tr>
                 ) : products.length === 0 ? (
-                  <tr><td colSpan={6} className="text-center py-4">No hay productos registrados</td></tr>
+                  <tr><td colSpan={7} className="text-center py-4">No hay productos registrados</td></tr>
                 ) : (
                   products.map((p: any) => (
                     <tr key={p.id}>
-                      <td>{p.name}</td>
+                      <td>
+                        <div className="avatar">
+                          <div className="mask mask-squircle w-12 h-12">
+                            <img 
+                              src={p.imagePath ? `http://localhost:3001/${p.imagePath.replace(/\\/g, '/')}` : 'https://placehold.co/100x100?text=No+Foto'} 
+                              alt={p.name} 
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = 'https://placehold.co/100x100?text=Error+Img';
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="font-bold">{p.name}</div>
+                        <div className="text-xs opacity-50">{p.brand} {p.model}</div>
+                      </td>
                       <td>{p.sku || '-'}</td>
                       <td>${p.costPrice}</td>
                       <td>${p.priceTotal}</td>
@@ -73,7 +101,7 @@ export default function ProductsPage() {
                         </div>
                       </td>
                       <td>
-                        <button className="btn btn-sm btn-ghost">Editar</button>
+                        <button className="btn btn-sm btn-ghost text-primary" onClick={() => handleEdit(p)}>Editar</button>
                       </td>
                     </tr>
                   ))
@@ -84,13 +112,16 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      <dialog id="add_product_modal" className="modal">
+      <dialog id="product_modal" className="modal">
         <div className="modal-box max-w-2xl">
-          <h3 className="font-bold text-lg mb-4">Agregar Nuevo Producto</h3>
-          <ProductForm onSuccess={() => {
-            (window as any).add_product_modal.close();
-            fetchProducts();
-          }} />
+          <h3 className="font-bold text-lg mb-4">{editingProduct ? 'Editar Producto' : 'Agregar Nuevo Producto'}</h3>
+          <ProductForm
+            product={editingProduct}
+            onSuccess={() => {
+              (window as any).product_modal.close();
+              fetchProducts();
+            }}
+          />
         </div>
         <form method="dialog" className="modal-backdrop">
           <button>close</button>
@@ -100,9 +131,18 @@ export default function ProductsPage() {
   );
 }
 
-function ProductForm({ onSuccess }: { onSuccess: () => void }) {
+function ProductForm({ onSuccess, product }: { onSuccess: () => void, product?: any }) {
   const [loading, setLoading] = useState(false);
-  const [mode, setMode] = useState('INCLUDES_TAX');
+  const [mode, setMode] = useState(product?.priceInputMode || 'INCLUDES_TAX');
+  const [file, setFile] = useState<File | null>(null);
+
+  useEffect(() => {
+    if (product) {
+      setMode(product.priceInputMode);
+    } else {
+      setMode('INCLUDES_TAX');
+    }
+  }, [product]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -112,6 +152,12 @@ function ProductForm({ onSuccess }: { onSuccess: () => void }) {
       name: formData.get('name'),
       sku: formData.get('sku'),
       barcode: formData.get('barcode'),
+      description: formData.get('description'),
+      brand: formData.get('brand'),
+      model: formData.get('model'),
+      packaging: formData.get('packaging'),
+      supplierName: formData.get('supplierName'),
+      warehouseLocation: formData.get('warehouseLocation'),
       costPrice: Number(formData.get('costPrice')),
       priceInputMode: mode,
       inputValue: Number(formData.get('inputValue')),
@@ -119,7 +165,20 @@ function ProductForm({ onSuccess }: { onSuccess: () => void }) {
     };
 
     try {
-      await api.post('/products', data);
+      let productId = product?.id;
+      if (product) {
+        await api.patch(`/products/${product.id}`, data);
+      } else {
+        const res = await api.post('/products', data);
+        productId = res.data.id;
+      }
+      
+      if (file) {
+        const imageFormData = new FormData();
+        imageFormData.append('file', file);
+        await api.post(`/products/${productId}/image`, imageFormData);
+      }
+
       onSuccess();
     } catch (err) {
       console.error(err);
@@ -132,39 +191,72 @@ function ProductForm({ onSuccess }: { onSuccess: () => void }) {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div className="form-control col-span-2">
-          <label className="label"><span className="label-text">Nombre del Producto *</span></label>
-          <input name="name" type="text" className="input input-bordered" required />
+          <label className="label"><span className="label-text font-bold">Información Básica</span></label>
+          <input name="name" type="text" placeholder="Nombre del Producto" className="input input-bordered" defaultValue={product?.name} required />
         </div>
         <div className="form-control">
           <label className="label"><span className="label-text">SKU</span></label>
-          <input name="sku" type="text" className="input input-bordered" />
+          <input name="sku" type="text" className="input input-bordered" defaultValue={product?.sku} />
         </div>
         <div className="form-control">
           <label className="label"><span className="label-text">Código de Barras</span></label>
-          <input name="barcode" type="text" className="input input-bordered" />
+          <input name="barcode" type="text" className="input input-bordered" defaultValue={product?.barcode} />
+        </div>
+        
+        <div className="form-control col-span-2">
+          <label className="label"><span className="label-text">Descripción</span></label>
+          <textarea name="description" className="textarea textarea-bordered" rows={2} defaultValue={product?.description}></textarea>
+        </div>
+
+        <div className="form-control">
+          <label className="label"><span className="label-text">Marca</span></label>
+          <input name="brand" type="text" className="input input-bordered" defaultValue={product?.brand} />
         </div>
         <div className="form-control">
-          <label className="label"><span className="label-text">Costo (Precio de Compra)</span></label>
-          <input name="costPrice" type="number" step="0.01" className="input input-bordered" required />
+          <label className="label"><span className="label-text">Modelo</span></label>
+          <input name="model" type="text" className="input input-bordered" defaultValue={product?.model} />
+        </div>
+
+        <div className="form-control">
+          <label className="label"><span className="label-text">Empaque (ej. Caja 12p)</span></label>
+          <input name="packaging" type="text" className="input input-bordered" defaultValue={product?.packaging} />
+        </div>
+        <div className="form-control">
+          <label className="label"><span className="label-text">Ubicación Almacén</span></label>
+          <input name="warehouseLocation" type="text" className="input input-bordered" defaultValue={product?.warehouseLocation} />
+        </div>
+
+        <div className="form-control col-span-2">
+          <label className="label"><span className="label-text font-bold text-primary">Precios e Impuestos</span></label>
+        </div>
+
+        <div className="form-control">
+          <label className="label"><span className="label-text">Costo (Compra)</span></label>
+          <input name="costPrice" type="number" step="0.01" className="input input-bordered" defaultValue={product?.costPrice} required />
         </div>
         <div className="form-control">
           <label className="label"><span className="label-text">Modo de Precio</span></label>
           <select className="select select-bordered" value={mode} onChange={(e) => setMode(e.target.value)}>
-            <option value="INCLUDES_TAX">Precio con IVA incluido</option>
+            <option value="INCLUDES_TAX">Precio incluye IVA</option>
             <option value="EXCLUDES_TAX">Precio más IVA</option>
           </select>
         </div>
         <div className="form-control col-span-2">
-          <label className="label"><span className="label-text">Precio de Venta</span></label>
-          <input name="inputValue" type="number" step="0.01" className="input input-bordered" required />
-          <p className="text-xs mt-1 opacity-70">
-            En México, normalmente los precios que vemos ya incluyen IVA. Si no estás seguro, captura el precio con IVA incluido y el sistema lo calculará automáticamente.
+          <label className="label"><span className="label-text font-bold">Precio de Venta</span></label>
+          <input name="inputValue" type="number" step="0.01" className="input input-bordered" defaultValue={product?.priceInputMode === 'INCLUDES_TAX' ? product?.priceTotal : product?.priceBase} required />
+          <p className="text-xs mt-1 opacity-70 italic">
+            "En México, normalmente los precios ya incluyen IVA."
           </p>
+        </div>
+
+        <div className="form-control col-span-2">
+          <label className="label"><span className="label-text font-bold">Imagen del Producto</span></label>
+          <input type="file" className="file-input file-input-bordered w-full" onChange={(e) => setFile(e.target.files?.[0] || null)} />
         </div>
       </div>
       <div className="modal-action">
-        <button type="submit" className={`btn btn-primary ${loading ? 'loading' : ''}`} disabled={loading}>
-          Guardar Producto
+        <button type="submit" className={`btn btn-primary btn-block ${loading ? 'loading' : ''}`} disabled={loading}>
+          {loading ? 'Guardando...' : (product ? 'Actualizar Producto' : 'Guardar Producto')}
         </button>
       </div>
     </form>

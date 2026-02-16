@@ -10,7 +10,8 @@ import {
   CreditCard, 
   LogOut,
   Menu,
-  ChevronRight
+  ChevronRight,
+  Users
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -37,6 +38,10 @@ export default function DashboardLayout({
     { name: 'Productos', icon: Package, href: '/dashboard/products' },
     { name: 'Suscripción', icon: CreditCard, href: '/dashboard/subscription' },
   ];
+
+  if (user?.role === 'PLATFORM_ADMIN') {
+    menuItems.push({ name: 'Admin Tenants', icon: Users, href: '/dashboard/admin/tenants' });
+  }
 
   return (
     <div className="drawer lg:drawer-open">

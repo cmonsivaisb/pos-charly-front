@@ -1,36 +1,43 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# POS SaaS México - Frontend
 
-## Getting Started
+Interfaz moderna y responsiva construida con **Next.js 15 (App Router)** y **Tailwind CSS**.
 
-First, run the development server:
+## Tecnologías Utilizadas
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **Next.js 15**: Renderizado híbrido y rutas optimizadas.
+- **Tailwind CSS**: Estilizado con sistema de diseño basado en utilidades.
+- **DaisyUI**: Componentes de interfaz listos para usar basados en Tailwind.
+- **Zustand**: Gestión de estado global ligera para autenticación.
+- **Lucide React**: Set de iconos modernos.
+- **Axios**: Cliente HTTP para comunicación con la API.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Funcionalidades Principales
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Dashboard**: Vista general del negocio.
+- **POS (Punto de Venta)**: Carrito de compras, búsqueda de productos y finalización de ventas.
+- **Gestión de Productos**: Listado con imágenes, filtros y edición completa.
+- **Panel de Admin SaaS**: Activación/Suspensión de cuentas de clientes.
+- **Autenticación**: Flujos de Registro y Login con protección de rutas.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Configuración
 
-## Learn More
+1.  **Instalar dependencias**:
+    ```bash
+    npm install
+    ```
+2.  **Variables de Entorno**:
+    Crea un archivo `.env.local`:
+    ```env
+    NEXT_PUBLIC_API_BASE_URL="http://localhost:3001/api"
+    ```
+3.  **Ejecutar en desarrollo**:
+    ```bash
+    npm run dev
+    ```
 
-To learn more about Next.js, take a look at the following resources:
+## Estructura del Proyecto
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `src/app`: Rutas del sistema (Login, Register, Dashboard).
+- `src/components`: Componentes reutilizables.
+- `src/lib/api.ts`: Configuración centralizada de Axios con interceptores para JWT.
+- `src/store`: Stores de Zustand (Auth).

@@ -95,15 +95,22 @@ export default function POSPage() {
           {filteredProducts.map((p: any) => (
             <div
               key={p.id}
-              className="card bg-base-100 shadow-sm hover:shadow-md cursor-pointer transition-shadow"
+              className="card bg-base-100 shadow-sm hover:shadow-md cursor-pointer transition-shadow overflow-hidden"
               onClick={() => addToCart(p)}
             >
-              <div className="card-body p-4">
-                <h3 className="font-bold text-sm truncate">{p.name}</h3>
-                <p className="text-primary font-bold text-lg">${p.priceTotal}</p>
-                <div className="flex justify-between items-center text-xs opacity-70">
+              <figure className="h-32 bg-base-200">
+                <img 
+                  src={p.imagePath ? `http://localhost:3001/${p.imagePath}` : 'https://placehold.co/200x150?text=Sin+Foto'} 
+                  alt={p.name}
+                  className="object-cover w-full h-full"
+                />
+              </figure>
+              <div className="card-body p-3">
+                <h3 className="font-bold text-xs truncate" title={p.name}>{p.name}</h3>
+                <p className="text-primary font-bold text-md">${p.priceTotal}</p>
+                <div className="flex justify-between items-center text-[10px] opacity-70">
                   <span>Stock: {p.stock}</span>
-                  <span>{p.sku}</span>
+                  <span className="badge badge-xs">{p.sku || 'N/A'}</span>
                 </div>
               </div>
             </div>
