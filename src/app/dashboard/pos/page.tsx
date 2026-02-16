@@ -1,14 +1,21 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import api from '@/lib/api';
-import { ShoppingCart, Search, CreditCard, Banknote, Trash2, Plus, Minus, PackageX } from 'lucide-react';
+import { ShoppingCart, Search, CreditCard, Banknote, Trash2, Plus, Minus, PackageX, Printer } from 'lucide-react';
+import { Ticket } from '@/components/Ticket';
+import { useAuthStore } from '@/store/authStore';
+import Swal from 'sweetalert2';
 
 export default function POSPage() {
+  const { user } = useAuthStore();
   const [products, setProducts] = useState([]);
   const [cart, setCart] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [lastSale, setLastSale] = useState<{ cart: any[], total: number, paymentMethod: string } | null>(null);
+  const ticketRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchProducts();
@@ -64,15 +71,16 @@ export default function POSPage() {
 
   const total = cart.reduce((acc, item) => acc + item.unitPrice * item.quantity, 0);
 
-  const [isProcessing, setIsProcessing] = useState(false);
-
   const handleCheckout = async (method: string) => {
     if (cart.length === 0 || isProcessing) return;
     
     setIsProcessing(true);
+    const currentCart = [...cart];
+    const currentTotal = total;
+    
     try {
       const payload = {
-        items: cart.map(item => ({
+        items: currentCart.map(item => ({
           productId: item.productId,
           quantity: Number(item.quantity),
           unitPrice: Number(item.unitPrice)
@@ -80,9 +88,30 @@ export default function POSPage() {
         paymentMethod: method,
       };
       await api.post('/sales', payload);
-      alert('Venta realizada con éxito');
-      setCart([]);
+      
+      setLastSale({ cart: currentCart, total: currentTotal, paymentMethod: method });
+      
       fetchProducts(); // Refresh stock
+
+      // Success Alert
+      await Swal.fire({
+        title: '¡Venta Exitosa!',
+        text: `Total cobrado: $${currentTotal.toFixed(2)}`,
+        icon: 'success',
+        timer: 2000,
+        showConfirmButton: false,
+        position: 'center',
+        toast: false
+      });
+
+      // Small delay to ensure state update and Ticket component re-render before showing print dialog
+      setTimeout(() => {
+        if (typeof window !== 'undefined') {
+          window.print();
+          setCart([]); // Clear cart AFTER print dialog trigger
+        }
+      }, 1000);
+
     } catch (err: any) {
       console.error('Checkout error:', err);
       const message = err.response?.data?.message;
@@ -106,6 +135,19 @@ export default function POSPage() {
 
   return (
     <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-base-200">
+      {/* Hidden Ticket for Printing */}
+      <div className="hidden print:block">
+        {lastSale && (
+          <Ticket 
+            ref={ticketRef}
+            cart={lastSale.cart}
+            total={lastSale.total}
+            paymentMethod={lastSale.paymentMethod}
+            userEmail={user?.email || ''}
+          />
+        )}
+      </div>
+
       {/* Left side: Product selection */}
       <div className="flex-1 flex flex-col p-6 overflow-hidden">
         {/* Search Bar */}
@@ -142,7 +184,7 @@ export default function POSPage() {
                   }}
                 />
                 <div className="absolute top-2 right-2">
-                  <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-tighter ${p.stock > 10 ? 'bg-success/20 text-success' : 'bg-error/20 text-error'}`}>
+                  <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-tighter shadow-sm ${p.stock > 0 ? 'bg-success text-success-content' : 'bg-error text-error-content'}`}>
                     Stock: {p.stock}
                   </span>
                 </div>
@@ -276,13 +318,24 @@ export default function POSPage() {
             </button>
           </div>
 
-          <button
-            className="btn btn-ghost btn-block btn-sm text-slate-500 hover:text-error uppercase text-[10px] font-bold tracking-[0.2em]"
-            onClick={() => setCart([])}
-            disabled={cart.length === 0 || isProcessing}
-          >
-            Anular Orden
-          </button>
+          <div className="flex flex-col gap-2">
+            <button
+              className="btn btn-ghost btn-block btn-sm text-slate-500 hover:text-error uppercase text-[10px] font-bold tracking-[0.2em]"
+              onClick={() => setCart([])}
+              disabled={cart.length === 0 || isProcessing}
+            >
+              Anular Orden
+            </button>
+            {lastSale && (
+              <button
+                className="btn btn-outline btn-primary btn-block btn-sm flex gap-2 items-center text-[10px] font-bold tracking-widest uppercase"
+                onClick={() => window.print()}
+              >
+                <Printer className="w-3 h-3" />
+                Reimprimir Último Ticket
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

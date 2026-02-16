@@ -1,13 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import api from '@/lib/api';
-import { Receipt, Search, Calendar, User, CreditCard, Banknote } from 'lucide-react';
+import { Receipt, Search, Calendar, User, CreditCard, Banknote, Printer } from 'lucide-react';
+import { Ticket } from '@/components/Ticket';
 
 export default function SalesPage() {
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedSale, setSelectedSale] = useState<any>(null);
+  const ticketRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchSales();
@@ -44,6 +46,23 @@ export default function SalesPage() {
 
   return (
     <div className="p-6">
+      {/* Hidden Ticket for Printing */}
+      <div className="hidden print:block">
+        {selectedSale && (
+          <Ticket 
+            ref={ticketRef}
+            cart={selectedSale.items.map((item: any) => ({
+              name: item.productName,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice
+            }))}
+            total={selectedSale.total}
+            paymentMethod={selectedSale.paymentMethod}
+            userEmail={selectedSale.user?.email || ''}
+          />
+        )}
+      </div>
+
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold flex items-center gap-2">
           <Receipt className="w-8 h-8" /> Historial de Ventas
@@ -166,8 +185,18 @@ export default function SalesPage() {
             </div>
           )}
           
-          <div className="modal-action">
-            <button className="btn btn-primary btn-block" onClick={() => (window as any).sale_details_modal.close()}>Cerrar</button>
+          <div className="modal-action grid grid-cols-2 gap-2">
+            <button 
+              className="btn btn-outline btn-primary flex gap-2"
+              onClick={() => {
+                setTimeout(() => {
+                  window.print();
+                }, 100);
+              }}
+            >
+              <Printer className="w-4 h-4" /> Imprimir Ticket
+            </button>
+            <button className="btn btn-primary" onClick={() => (window as any).sale_details_modal.close()}>Cerrar</button>
           </div>
         </div>
         <form method="dialog" className="modal-backdrop">
