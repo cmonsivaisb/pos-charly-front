@@ -49,7 +49,7 @@ export default function SubscriptionPage() {
             <p>
               {isActive 
                 ? `Tu cuenta está activa. Próximo pago: ${new Date(status.nextPaymentDate).toLocaleDateString()}`
-                : 'Tu cuenta está en periodo de prueba o requiere pago.'}
+                : 'Tu cuenta está en periodo de prueba por 15 días o requiere pago.'}
             </p>
           </div>
         </div>
@@ -59,15 +59,21 @@ export default function SubscriptionPage() {
         <div className="mt-10 grid md:grid-cols-2 gap-6">
           <div className="card bg-base-100 shadow-xl border">
             <div className="card-body">
-              <h2 className="card-title">Plan Mensual</h2>
-              <p className="text-4xl font-bold my-4">$499 <span className="text-sm font-normal">MXN/mes</span></p>
-              <ul className="list-disc list-inside space-y-2 mb-6 opacity-80">
-                <li>Ventas ilimitadas</li>
-                <li>Soporte técnico</li>
-                <li>Reportes avanzados</li>
-                <li>CFDI 4.0 (Scaffold)</li>
+              <h2 className="card-title text-primary">Plan Software</h2>
+              <p className="text-4xl font-bold my-4">$499 <span className="text-sm font-normal text-slate-500">MXN/mes</span></p>
+              <div className="badge badge-outline mb-4 text-[10px] font-bold uppercase">Software y Soporte</div>
+              <ul className="space-y-3 mb-8">
+                <li className="flex items-center gap-2 text-sm font-medium">
+                  <CheckCircle className="w-4 h-4 text-success" /> Ventas ilimitadas
+                </li>
+                <li className="flex items-center gap-2 text-sm font-medium">
+                  <CheckCircle className="w-4 h-4 text-success" /> Soporte técnico
+                </li>
+                <li className="flex items-center gap-2 text-sm font-medium text-slate-400 italic">
+                  * Demo limitada por tiempo (15 días)
+                </li>
               </ul>
-              <button className="btn btn-primary btn-block" onClick={handlePay}>
+              <button className="btn btn-primary btn-block h-14" onClick={handlePay}>
                 <CreditCard className="w-4 h-4 mr-2" /> Pagar con PayPal
               </button>
             </div>

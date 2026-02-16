@@ -9,6 +9,8 @@ export default function SalesPage() {
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedSale, setSelectedSale] = useState<any>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const ticketRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -25,6 +27,12 @@ export default function SalesPage() {
       setLoading(false);
     }
   };
+
+  const totalPages = Math.ceil(sales.length / itemsPerPage);
+  const paginatedSales = sales.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString('es-MX', {
@@ -92,7 +100,7 @@ export default function SalesPage() {
                 ) : sales.length === 0 ? (
                   <tr><td colSpan={6} className="text-center py-4">No se han registrado ventas</td></tr>
                 ) : (
-                  sales.map((sale: any) => (
+                  paginatedSales.map((sale: any) => (
                     <tr key={sale.id}>
                       <td className="font-bold">#{sale.folio}</td>
                       <td>{formatDate(sale.createdAt)}</td>
@@ -126,6 +134,34 @@ export default function SalesPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination */}
+          {!loading && sales.length > itemsPerPage && (
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6 pt-6 border-t border-base-200">
+              <div className="text-xs opacity-60 font-bold uppercase tracking-widest">
+                Mostrando {Math.min(sales.length, (currentPage - 1) * itemsPerPage + 1)} - {Math.min(sales.length, currentPage * itemsPerPage)} de {sales.length} ventas
+              </div>
+              <div className="join shadow-lg">
+                <button 
+                  className="join-item btn btn-sm bg-base-200 border-base-300" 
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                >
+                  «
+                </button>
+                <button className="join-item btn btn-sm bg-primary text-white no-animation">
+                  PÁGINA {currentPage} DE {totalPages}
+                </button>
+                <button 
+                  className="join-item btn btn-sm bg-base-200 border-base-300" 
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  »
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

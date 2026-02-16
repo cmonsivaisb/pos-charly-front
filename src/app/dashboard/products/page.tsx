@@ -8,11 +8,21 @@ export default function ProductsPage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingProduct, setEditingProduct] = useState<any>(null);
+  const [deletingProduct, setDeletingProduct] = useState<any>(null);
   const [search, setSearch] = useState('');
+  const [filterStock, setFilterStock] = useState('all'); // 'all', 'low'
+  const [filterBrand, setFilterBrand] = useState('all');
+  const [filterMode, setFilterMode] = useState('all'); // 'all', 'INCLUDES_TAX', 'EXCLUDES_TAX'
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     fetchProducts();
   }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filterStock, filterBrand, filterMode]);
 
   const fetchProducts = async () => {
     try {
@@ -39,11 +49,18 @@ export default function ProductsPage() {
     (window as any).product_modal.showModal();
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`¿Estás seguro de eliminar el producto "${name}"?`)) return;
+  const confirmDelete = (product: any) => {
+    setDeletingProduct(product);
+    (window as any).delete_modal.showModal();
+  };
+
+  const handleDelete = async () => {
+    if (!deletingProduct) return;
     
     try {
-      await api.delete(`/products/${id}`);
+      await api.delete(`/products/${deletingProduct.id}`);
+      (window as any).delete_modal.close();
+      setDeletingProduct(null);
       fetchProducts();
     } catch (err) {
       console.error(err);
@@ -73,11 +90,58 @@ export default function ProductsPage() {
     }
   };
 
-  const filteredProducts = products.filter((p: any) =>
-    p.name.toLowerCase().includes(search.toLowerCase()) ||
-    (p.sku && p.sku.toLowerCase().includes(search.toLowerCase())) ||
-    (p.barcode && p.barcode.toLowerCase().includes(search.toLowerCase()))
+  const brands = Array.from(new Set(products.map((p: any) => p.brand || 'Genérico'))).sort();
+
+  const allFilteredProducts = products.filter((p: any) => {
+    const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) ||
+      (p.sku && p.sku.toLowerCase().includes(search.toLowerCase())) ||
+      (p.barcode && p.barcode.toLowerCase().includes(search.toLowerCase()));
+    
+    const matchesStock = filterStock === 'all' || (filterStock === 'low' && p.stock <= (p.minStock || 0));
+    const matchesBrand = filterBrand === 'all' || (p.brand || 'Genérico') === filterBrand;
+    const matchesMode = filterMode === 'all' || p.priceInputMode === filterMode;
+    
+    return matchesSearch && matchesStock && matchesBrand && matchesMode;
+  });
+
+  const totalPages = Math.ceil(allFilteredProducts.length / itemsPerPage);
+  const filteredProducts = allFilteredProducts.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
   );
+
+  const exportToCSV = () => {
+    if (allFilteredProducts.length === 0) return;
+    
+    const headers = ['Nombre', 'SKU', 'Código de Barras', 'Costo', 'Precio Total', 'Stock', 'Stock Mínimo', 'Marca', 'Modelo'];
+    const rows = allFilteredProducts.map((p: any) => [
+      p.name,
+      p.sku || '',
+      p.barcode || '',
+      p.costPrice,
+      p.priceTotal,
+      p.stock,
+      p.minStock || 0,
+      p.brand || '',
+      p.model || ''
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(val => `"${val}"`).join(','))
+    ].join('\r\n');
+
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `inventario_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <div className="p-8 bg-base-200 min-h-[calc(100vh-64px)]">
@@ -134,13 +198,51 @@ export default function ProductsPage() {
             />
           </div>
           <div className="flex gap-2">
-            <button className="btn btn-ghost border-base-300 bg-base-200 uppercase text-[10px] font-bold tracking-widest"><Filter className="w-4 h-4 mr-2" /> Filtros</button>
-            <button className="btn btn-ghost border-base-300 bg-base-200 uppercase text-[10px] font-bold tracking-widest">Exportar CSV</button>
+            <div className="dropdown dropdown-end">
+              <label tabIndex={0} className={`btn btn-ghost border-base-300 bg-base-200 uppercase text-[10px] font-bold tracking-widest ${(filterStock !== 'all' || filterBrand !== 'all' || filterMode !== 'all') ? 'text-primary' : ''}`}>
+                <Filter className="w-4 h-4 mr-2" /> 
+                Filtros {(filterStock !== 'all' || filterBrand !== 'all' || filterMode !== 'all') && '•'}
+              </label>
+              <div tabIndex={0} className="dropdown-content z-[20] p-6 shadow-2xl bg-base-100 rounded-box w-80 mt-2 border border-base-300">
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center border-b border-base-300 pb-2 mb-2">
+                    <span className="text-[10px] uppercase font-bold tracking-widest text-slate-500">Panel de Filtros</span>
+                    <button className="text-[9px] font-bold text-primary hover:underline uppercase" onClick={() => { setFilterStock('all'); setFilterBrand('all'); setFilterMode('all'); }}>Limpiar</button>
+                  </div>
+                  
+                  <div>
+                    <label className="label py-1"><span className="label-text font-bold text-[10px] uppercase text-slate-400">Existencias</span></label>
+                    <select className="select select-bordered select-sm w-full font-bold text-xs uppercase bg-base-200 border-none h-10" value={filterStock} onChange={(e) => setFilterStock(e.target.value)}>
+                      <option value="all">Todos los niveles</option>
+                      <option value="low">Solo Stock Bajo</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="label py-1"><span className="label-text font-bold text-[10px] uppercase text-slate-400">Marca / Fabricante</span></label>
+                    <select className="select select-bordered select-sm w-full font-bold text-xs uppercase bg-base-200 border-none h-10" value={filterBrand} onChange={(e) => setFilterBrand(e.target.value)}>
+                      <option value="all">Todas las marcas</option>
+                      {brands.map(b => <option key={b} value={b}>{b}</option>)}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="label py-1"><span className="label-text font-bold text-[10px] uppercase text-slate-400">Régimen IVA</span></label>
+                    <select className="select select-bordered select-sm w-full font-bold text-xs uppercase bg-base-200 border-none h-10" value={filterMode} onChange={(e) => setFilterMode(e.target.value)}>
+                      <option value="all">Cualquier modo</option>
+                      <option value="INCLUDES_TAX">Precio incluye IVA</option>
+                      <option value="EXCLUDES_TAX">Precio más IVA</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <button className="btn btn-ghost border-base-300 bg-base-200 uppercase text-[10px] font-bold tracking-widest" onClick={exportToCSV}>Exportar CSV</button>
           </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="table w-full">
+          <table className="table w-full border-collapse">
             <thead>
               <tr className="bg-base-200/50 border-b-2 border-base-300">
                 <th className="uppercase text-[10px] font-bold tracking-widest text-slate-500 py-4">Producto</th>
@@ -229,7 +331,7 @@ export default function ProductsPage() {
                         <button className="btn btn-square btn-sm bg-base-200 border-base-300 hover:text-primary hover:bg-base-300" onClick={() => handleEdit(p)} title="Editar">
                           <Edit2 className="w-4 h-4" />
                         </button>
-                        <button className="btn btn-square btn-sm bg-base-200 border-base-300 hover:text-error hover:bg-base-300" onClick={() => handleDelete(p.id, p.name)} title="Eliminar">
+                        <button className="btn btn-square btn-sm bg-base-200 border-base-300 hover:text-error hover:bg-base-300" onClick={() => confirmDelete(p)} title="Eliminar">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
@@ -240,7 +342,63 @@ export default function ProductsPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
+        {!loading && allFilteredProducts.length > itemsPerPage && (
+          <div className="p-4 border-t border-base-300 flex flex-col sm:flex-row justify-between items-center gap-4 bg-base-100/50">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+              Mostrando {Math.min(allFilteredProducts.length, (currentPage - 1) * itemsPerPage + 1)} - {Math.min(allFilteredProducts.length, currentPage * itemsPerPage)} de {allFilteredProducts.length} productos
+            </div>
+            <div className="join shadow-retail">
+              <button 
+                className="join-item btn btn-sm bg-base-200 border-base-300" 
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+              >
+                «
+              </button>
+              <button className="join-item btn btn-sm bg-primary text-white no-animation">
+                PÁGINA {currentPage} DE {totalPages}
+              </button>
+              <button 
+                className="join-item btn btn-sm bg-base-200 border-base-300" 
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+              >
+                »
+              </button>
+            </div>
+          </div>
+        )}
       </div>
+
+      <dialog id="delete_modal" className="modal modal-bottom sm:modal-middle">
+        <div className="modal-box bg-base-100 p-0 border-2 border-error max-w-md">
+          <div className="bg-error p-6 flex justify-between items-center text-white">
+            <h3 className="font-display font-bold text-xl uppercase tracking-tighter flex items-center gap-2">
+              <Trash2 className="w-6 h-6" />
+              Confirmar Eliminación
+            </h3>
+          </div>
+          <div className="p-8 text-center">
+            <p className="text-slate-600 dark:text-slate-400 font-bold uppercase text-xs mb-4">¿Estás seguro de eliminar este producto?</p>
+            <h4 className="text-2xl font-display font-bold text-slate-900 dark:text-white uppercase mb-8">
+              {deletingProduct?.name}
+            </h4>
+            <div className="flex gap-3">
+              <button className="btn flex-1 h-14 bg-base-300 border-none uppercase font-bold text-xs tracking-widest shadow-retail" onClick={() => (window as any).delete_modal.close()}>
+                Cancelar
+              </button>
+              <button className="btn flex-1 h-14 btn-error text-white uppercase font-display font-bold text-sm tracking-widest shadow-retail" onClick={handleDelete}>
+                Eliminar Registro
+              </button>
+            </div>
+          </div>
+        </div>
+        <form method="dialog" className="modal-backdrop bg-slate-900/80 backdrop-blur-sm">
+          <button>close</button>
+        </form>
+      </dialog>
 
       <dialog id="product_modal" className="modal modal-bottom sm:modal-middle overflow-y-auto">
         <div className="modal-box max-w-2xl bg-base-100 p-0 border-2 border-primary my-8">
