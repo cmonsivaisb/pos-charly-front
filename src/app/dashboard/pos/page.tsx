@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
-import { ShoppingCart, Search, User, CreditCard, Banknote } from 'lucide-react';
+import { ShoppingCart, Search, CreditCard, Banknote, Trash2, Plus, Minus, PackageX } from 'lucide-react';
 
 export default function POSPage() {
   const [products, setProducts] = useState([]);
@@ -46,6 +46,16 @@ export default function POSPage() {
         },
       ]);
     }
+  };
+
+  const updateQuantity = (productId: string, delta: number) => {
+    setCart(prev => prev.map(item => {
+      if (item.productId === productId) {
+        const newQty = Math.max(1, item.quantity + delta);
+        return { ...item, quantity: newQty };
+      }
+      return item;
+    }));
   };
 
   const removeFromCart = (productId: string) => {
@@ -95,123 +105,183 @@ export default function POSPage() {
   );
 
   return (
-    <div className="flex h-[calc(100vh-64px)] overflow-hidden">
+    <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-base-200">
       {/* Left side: Product selection */}
-      <div className="flex-1 flex flex-col p-4 bg-base-300 overflow-hidden">
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 opacity-50" />
+      <div className="flex-1 flex flex-col p-6 overflow-hidden">
+        {/* Search Bar */}
+        <div className="relative mb-6">
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <Search className="h-5 w-5 text-slate-400" />
+          </div>
           <input
             type="text"
-            placeholder="Buscar producto (F1)..."
-            className="input input-bordered w-full pl-10"
+            placeholder="BUSCAR PRODUCTO O ESCANEAR CÓDIGO..."
+            className="input w-full pl-12 h-14 bg-base-100 border-2 border-base-300 focus:border-primary font-bold tracking-wide uppercase transition-all shadow-retail text-sm text-base-content"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             autoFocus
           />
         </div>
 
-        <div className="flex-1 overflow-y-auto grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 p-2">
+        {/* Product Grid */}
+        <div className="flex-1 overflow-y-auto grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 pr-2 pb-10 content-start">
           {filteredProducts.map((p: any) => (
             <div
               key={p.id}
-              className="card bg-base-100 shadow-sm hover:shadow-md cursor-pointer transition-shadow overflow-hidden border border-base-200 h-fit"
+              className="group bg-base-100 border-2 border-base-300 hover:border-primary cursor-pointer transition-all overflow-hidden flex flex-col shadow-retail relative"
+              style={{ height: 'auto', minHeight: 'min-content' }}
               onClick={() => addToCart(p)}
             >
-              <figure className="h-28 bg-base-200">
+              <div className="aspect-square bg-base-300 relative overflow-hidden flex items-center justify-center shrink-0">
                 <img
-                  src={p.imagePath ? `http://localhost:3001/${p.imagePath.replace(/\\/g, '/')}` : 'https://placehold.co/200x150?text=Sin+Foto'}
+                  src={p.imagePath ? `http://localhost:3001/${p.imagePath.replace(/\\/g, '/')}` : 'https://placehold.co/400x400?text=PRODUCT'}
                   alt={p.name}
-                  className="object-cover w-full h-full"
+                  className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-300"
                   onError={(e) => {
-                    (e.target as HTMLImageElement).src = 'https://placehold.co/200x150?text=Error+Img';
+                    (e.target as HTMLImageElement).src = 'https://placehold.co/400x400?text=IMG+ERROR';
                   }}
                 />
-              </figure>
-              <div className="card-body p-2 gap-1">
-                <h3 className="font-bold text-[11px] leading-tight line-clamp-2 h-8" title={p.name}>
+                <div className="absolute top-2 right-2">
+                  <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-tighter ${p.stock > 10 ? 'bg-success/20 text-success' : 'bg-error/20 text-error'}`}>
+                    Stock: {p.stock}
+                  </span>
+                </div>
+              </div>
+              <div className="p-3 flex flex-col flex-1 min-h-0">
+                <h3 className="font-display font-bold text-[11px] leading-tight line-clamp-2 mb-1 uppercase tracking-tight group-hover:text-primary transition-colors text-base-content">
                   {p.name}
                 </h3>
-                <div className="flex justify-between items-end mt-auto">
-                  <p className="text-primary font-bold text-sm">${p.priceTotal}</p>
-                  <div className="flex flex-col items-end text-[9px] opacity-70">
-                    <span>Stock: {p.stock}</span>
-                    <span className="truncate max-w-[60px]">{p.sku || 'N/A'}</span>
-                  </div>
+                <div className="mt-auto flex flex-col gap-1">
+                  <span className="font-display font-bold text-lg text-primary leading-none">
+                    ${Number(p.priceTotal).toFixed(2)}
+                  </span>
+                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tight truncate">
+                    SKU: {p.sku || 'N/A'}
+                  </span>
+                </div>
+              </div>
+              {/* Hover Add Indicator */}
+              <div className="absolute inset-0 bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <div className="bg-primary text-white px-4 py-2 rounded shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-transform font-bold text-xs">
+                  AÑADIR
                 </div>
               </div>
             </div>
           ))}
+          {loading && <div className="col-span-full flex justify-center py-20"><span className="loading loading-spinner loading-lg text-primary"></span></div>}
+          {!loading && filteredProducts.length === 0 && (
+            <div className="col-span-full flex flex-col items-center py-20 opacity-50">
+              <PackageX className="w-16 h-16 mb-4 text-base-content" />
+              <p className="font-bold uppercase tracking-widest text-base-content">No se encontraron productos</p>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Right side: Cart */}
-      <div className="w-96 bg-base-100 border-l flex flex-col shadow-xl">
-        <div className="p-4 border-b flex justify-between items-center bg-primary text-primary-content">
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            <ShoppingCart className="w-6 h-6" /> Carrito
-          </h2>
-          <span className="badge badge-secondary">{cart.length} items</span>
+      {/* Right side: Cart / Checkout Terminal */}
+      <div className="w-[450px] bg-base-100 border-l-2 border-base-300 flex flex-col shadow-2xl z-10">
+        {/* Terminal Header */}
+        <div className="p-6 bg-slate-900 text-white flex justify-between items-center border-b-4 border-primary dark:bg-slate-950">
+          <div className="flex items-center gap-3">
+            <div className="bg-primary p-2 rounded">
+              <ShoppingCart className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h2 className="text-lg font-display font-bold leading-none uppercase tracking-tighter">Orden Actual</h2>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Terminal #01</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <span className="block text-2xl font-display font-bold text-primary leading-none">
+              {cart.reduce((sum, i) => sum + i.quantity, 0)}
+            </span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase">Artículos</span>
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Cart Items */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {cart.length === 0 ? (
-            <div className="text-center py-10 opacity-50">
-              <ShoppingCart className="w-16 h-16 mx-auto mb-2" />
-              <p>El carrito está vacío</p>
+            <div className="h-full flex flex-col items-center justify-center opacity-20 py-20">
+              <ShoppingCart className="w-24 h-24 mb-4 text-base-content" />
+              <p className="font-display font-bold text-xl uppercase tracking-widest text-center px-10 text-base-content">Esperando productos...</p>
             </div>
           ) : (
             cart.map((item) => (
-              <div key={item.productId} className="flex justify-between items-center border-b pb-2">
-                <div>
-                  <h4 className="font-bold text-sm">{item.name}</h4>
-                  <div className="text-xs opacity-70">
-                    {item.quantity} x ${item.unitPrice}
+              <div key={item.productId} className="flex items-center gap-4 bg-base-200 p-3 border-2 border-transparent hover:border-primary/30 transition-all shadow-sm group">
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-bold text-xs uppercase truncate leading-none mb-2 text-base-content">{item.name}</h4>
+                  <div className="flex items-center gap-3">
+                    <span className="text-primary font-display font-bold text-sm">${Number(item.unitPrice).toFixed(2)}</span>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase">Sub: ${(Number(item.unitPrice) * item.quantity).toFixed(2)}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-bold">${(item.unitPrice * item.quantity).toFixed(2)}</span>
-                  <button
-                    className="btn btn-circle btn-xs btn-ghost text-error"
-                    onClick={() => removeFromCart(item.productId)}
-                  >
-                    ✕
+                
+                <div className="flex items-center bg-base-100 border border-base-300 rounded overflow-hidden">
+                  <button onClick={() => updateQuantity(item.productId, -1)} className="p-1 hover:bg-base-300 text-slate-500 transition-colors">
+                    <Minus className="w-3 h-3" />
+                  </button>
+                  <span className="w-8 text-center font-bold text-xs text-base-content">{item.quantity}</span>
+                  <button onClick={() => updateQuantity(item.productId, 1)} className="p-1 hover:bg-base-300 text-slate-500 transition-colors">
+                    <Plus className="w-3 h-3" />
                   </button>
                 </div>
+
+                <button
+                  className="btn btn-square btn-xs btn-ghost text-slate-400 hover:text-error"
+                  onClick={() => removeFromCart(item.productId)}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
             ))
           )}
         </div>
 
-        <div className="p-4 bg-base-200 border-t space-y-4">
-          <div className="flex justify-between text-2xl font-bold">
-            <span>Total:</span>
-            <span>${total.toFixed(2)}</span>
+        {/* Totals & Checkout */}
+        <div className="p-6 bg-base-200 border-t-2 border-base-300 space-y-6">
+          <div className="space-y-2">
+            <div className="flex justify-between items-end">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Subtotal</span>
+              <span className="font-display font-bold text-base-content opacity-70">${(total * 0.84).toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between items-end">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">IVA (16%)</span>
+              <span className="font-display font-bold text-base-content opacity-70">${(total * 0.16).toFixed(2)}</span>
+            </div>
+            <div className="pt-2 border-t border-slate-300 dark:border-slate-700 flex justify-between items-center">
+              <span className="text-xs font-bold text-base-content uppercase tracking-tighter">Total a Pagar</span>
+              <span className="text-4xl font-display font-bold text-primary tracking-tighter">
+                ${total.toFixed(2)}
+              </span>
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-3">
             <button
-              className="btn btn-success btn-lg flex-col h-auto py-4"
+              className="btn bg-success hover:bg-success-dark text-white border-none h-20 flex-col gap-1 shadow-retail active:translate-y-1 transition-all group"
               onClick={() => handleCheckout('CASH')}
-              disabled={cart.length === 0}
+              disabled={cart.length === 0 || isProcessing}
             >
-              <Banknote className="w-6 h-6 mb-1" />
-              Efectivo
+              <Banknote className="w-8 h-8 group-hover:scale-110 transition-transform" />
+              <span className="text-xs font-bold tracking-widest uppercase">Efectivo</span>
             </button>
             <button
-              className="btn btn-info btn-lg flex-col h-auto py-4"
+              className="btn bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white border-none h-20 flex-col gap-1 shadow-retail active:translate-y-1 transition-all group"
               onClick={() => handleCheckout('CARD')}
-              disabled={cart.length === 0}
+              disabled={cart.length === 0 || isProcessing}
             >
-              <CreditCard className="w-6 h-6 mb-1" />
-              Tarjeta
+              <CreditCard className="w-8 h-8 group-hover:scale-110 transition-transform" />
+              <span className="text-xs font-bold tracking-widest uppercase">Tarjeta</span>
             </button>
           </div>
+
           <button
-            className="btn btn-outline btn-block"
+            className="btn btn-ghost btn-block btn-sm text-slate-500 hover:text-error uppercase text-[10px] font-bold tracking-[0.2em]"
             onClick={() => setCart([])}
-            disabled={cart.length === 0}
+            disabled={cart.length === 0 || isProcessing}
           >
-            Limpiar Carrito
+            Anular Orden
           </button>
         </div>
       </div>

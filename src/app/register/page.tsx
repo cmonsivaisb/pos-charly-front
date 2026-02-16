@@ -1,147 +1,136 @@
 'use client';
 
-import { useState } from 'react';
+import { useAuthStore } from '@/store/authStore';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useRouter } from 'next/navigation';
+import { Store, User, Mail, Lock, ArrowRight, ShieldCheck } from 'lucide-react';
 import api from '@/lib/api';
-import { useAuthStore } from '@/store/authStore';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 const registerSchema = z.object({
-  businessName: z.string().min(3, 'El nombre del negocio debe tener al menos 3 caracteres'),
+  name: z.string().min(2, 'Mínimo 2 caracteres'),
   email: z.string().email('Email inválido'),
-  password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
-  adminName: z.string().min(3, 'El nombre del administrador debe tener al menos 3 caracteres'),
-  rfc: z.string().optional(),
+  password: z.string().min(6, 'Mínimo 6 caracteres'),
 });
 
-type RegisterFormValues = z.infer<typeof registerSchema>;
+type RegisterForm = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
   const router = useRouter();
-  const setAuth = useAuthStore((state) => state.setAuth);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
 
   const {
     register,
     handleSubmit,
-    formState: { errors },
-  } = useForm<RegisterFormValues>({
+    formState: { errors, isSubmitting },
+  } = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
   });
 
-  const onSubmit = async (data: RegisterFormValues) => {
-    setLoading(true);
-    setError(null);
+  const onSubmit = async (data: RegisterForm) => {
     try {
-      const response = await api.post('/auth/register', data);
-      const { user, accessToken, refreshToken } = response.data;
-      setAuth(user, accessToken, refreshToken);
-      router.push('/dashboard');
+      await api.post('/auth/register', data);
+      alert('Registro exitoso. Ahora puedes iniciar sesión.');
+      router.push('/login');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al registrarse');
-    } finally {
-      setLoading(false);
+      alert(err.response?.data?.message || 'Error al registrar');
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-base-200">
-      <div className="card w-full max-w-md bg-base-100 shadow-xl">
-        <div className="card-body">
-          <h2 className="card-title text-2xl font-bold mb-4">Registro de Negocio</h2>
-          {error && <div className="alert alert-error mb-4">{error}</div>}
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">Nombre del Negocio</span>
-              </label>
-              <input
-                type="text"
-                placeholder="Mi Tienda S.A."
-                className={`input input-bordered ${errors.businessName ? 'input-error' : ''}`}
-                {...register('businessName')}
-              />
-              {errors.businessName && (
-                <label className="label">
-                  <span className="label-text-alt text-error">{errors.businessName.message}</span>
+    <div className="min-h-screen flex items-center justify-center bg-slate-900 dark:bg-slate-950 p-6 relative overflow-hidden">
+      {/* Decorative Background */}
+      <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
+        <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary rounded-full blur-[120px]"></div>
+        <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-slate-700 rounded-full blur-[120px]"></div>
+      </div>
+
+      <div className="w-full max-w-[500px] z-10">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded shadow-retail mb-4 rotate-[-3deg]">
+            <Store className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="text-3xl font-display font-bold text-white tracking-tighter uppercase">
+            Únete a Retail<span className="text-primary">POS</span>
+          </h1>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.4em] mt-2">Crea tu terminal comercial hoy</p>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 shadow-2xl border-t-8 border-primary overflow-hidden">
+          <div className="p-10">
+             <div className="flex justify-between items-center mb-8">
+              <h2 className="text-xl font-display font-bold uppercase tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-primary" /> Registro de Empresa
+              </h2>
+              <ThemeToggle />
+            </div>
+
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+              <div className="form-control">
+                <label className="label py-1">
+                  <span className="label-text font-bold text-[10px] uppercase text-slate-500 tracking-widest">Nombre del Negocio / Dueño</span>
                 </label>
-              )}
-            </div>
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">RFC (Opcional)</span>
-              </label>
-              <input
-                type="text"
-                placeholder="XXXX000000XXX"
-                className="input input-bordered"
-                {...register('rfc')}
-              />
-            </div>
-            <div className="divider">Admin Info</div>
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">Nombre del Admin</span>
-              </label>
-              <input
-                type="text"
-                placeholder="Juan Pérez"
-                className={`input input-bordered ${errors.adminName ? 'input-error' : ''}`}
-                {...register('adminName')}
-              />
-              {errors.adminName && (
-                <label className="label">
-                  <span className="label-text-alt text-error">{errors.adminName.message}</span>
+                <div className="relative">
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    {...register('name')}
+                    className="input w-full pl-12 h-14 bg-slate-100 dark:bg-slate-800 border-none font-bold text-sm focus:ring-2 focus:ring-primary text-slate-900 dark:text-white uppercase"
+                    placeholder="TIENDA EJEMPLO S.A."
+                  />
+                </div>
+                {errors.name && <span className="text-error text-[10px] font-bold uppercase mt-1">{errors.name.message}</span>}
+              </div>
+
+              <div className="form-control">
+                <label className="label py-1">
+                  <span className="label-text font-bold text-[10px] uppercase text-slate-500 tracking-widest">Correo Corporativo</span>
                 </label>
-              )}
-            </div>
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">Email</span>
-              </label>
-              <input
-                type="email"
-                placeholder="admin@ejemplo.com"
-                className={`input input-bordered ${errors.email ? 'input-error' : ''}`}
-                {...register('email')}
-              />
-              {errors.email && (
-                <label className="label">
-                  <span className="label-text-alt text-error">{errors.email.message}</span>
+                <div className="relative">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    {...register('email')}
+                    type="email"
+                    className="input w-full pl-12 h-14 bg-slate-100 dark:bg-slate-800 border-none font-bold text-sm focus:ring-2 focus:ring-primary text-slate-900 dark:text-white"
+                    placeholder="contacto@negocio.com"
+                  />
+                </div>
+                {errors.email && <span className="text-error text-[10px] font-bold uppercase mt-1">{errors.email.message}</span>}
+              </div>
+
+              <div className="form-control">
+                <label className="label py-1">
+                  <span className="label-text font-bold text-[10px] uppercase text-slate-500 tracking-widest">Contraseña de Acceso</span>
                 </label>
-              )}
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    {...register('password')}
+                    type="password"
+                    className="input w-full pl-12 h-14 bg-slate-100 dark:bg-slate-800 border-none font-bold text-sm focus:ring-2 focus:ring-primary text-slate-900 dark:text-white"
+                    placeholder="••••••••"
+                  />
+                </div>
+                {errors.password && <span className="text-error text-[10px] font-bold uppercase mt-1">{errors.password.message}</span>}
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  className={`btn btn-primary btn-block h-16 shadow-retail font-display font-bold text-sm tracking-widest uppercase group ${isSubmitting ? 'loading' : ''}`}
+                  disabled={isSubmitting}
+                >
+                  REGISTRAR MI NEGOCIO
+                  {!isSubmitting && <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />}
+                </button>
+              </div>
+            </form>
+
+            <div className="mt-8 pt-8 border-t border-slate-100 dark:border-slate-800 text-center">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                ¿Ya tienes una cuenta? <a href="/login" className="text-primary hover:underline">Iniciar Sesión</a>
+              </p>
             </div>
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">Contraseña</span>
-              </label>
-              <input
-                type="password"
-                placeholder="******"
-                className={`input input-bordered ${errors.password ? 'input-error' : ''}`}
-                {...register('password')}
-              />
-              {errors.password && (
-                <label className="label">
-                  <span className="label-text-alt text-error">{errors.password.message}</span>
-                </label>
-              )}
-            </div>
-            <div className="form-control mt-6">
-              <button
-                type="submit"
-                className={`btn btn-primary ${loading ? 'loading' : ''}`}
-                disabled={loading}
-              >
-                {loading ? 'Registrando...' : 'Registrarse'}
-              </button>
-            </div>
-          </form>
-          <div className="text-center mt-4">
-            <p>¿Ya tienes cuenta? <a href="/login" className="link link-primary">Inicia sesión</a></p>
           </div>
         </div>
       </div>

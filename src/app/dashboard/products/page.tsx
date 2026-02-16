@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
-import { Package, Plus, Search, Minus, PlusCircle } from 'lucide-react';
+import { Package, Plus, Search, Minus, PlusCircle, Filter, MoreHorizontal, Edit2, PackageSearch } from 'lucide-react';
 
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingProduct, setEditingProduct] = useState<any>(null);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     fetchProducts();
@@ -41,10 +42,8 @@ export default function ProductsPage() {
       
       const newStock = Math.max(0, product.stock + amount);
       
-      // Enviar actualización parcial
       await api.patch(`/products/${id}`, { 
         stock: newStock,
-        // Re-enviar campos requeridos por el DTO para evitar validación fallida
         name: product.name,
         costPrice: Number(product.costPrice),
         priceInputMode: product.priceInputMode,
@@ -58,114 +57,187 @@ export default function ProductsPage() {
     }
   };
 
+  const filteredProducts = products.filter((p: any) =>
+    p.name.toLowerCase().includes(search.toLowerCase()) ||
+    (p.sku && p.sku.toLowerCase().includes(search.toLowerCase())) ||
+    (p.barcode && p.barcode.toLowerCase().includes(search.toLowerCase()))
+  );
+
   return (
-    <div className="p-6 bg-base-300 min-h-[calc(100vh-64px)] lg:min-h-screen">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold flex items-center gap-2">
-          <Package className="w-8 h-8" /> Productos
-        </h1>
-        <button className="btn btn-primary" onClick={handleAdd}>
-          <Plus className="w-4 h-4 mr-2" /> Nuevo Producto
+    <div className="p-8 bg-base-200 min-h-[calc(100vh-64px)]">
+      {/* Header section */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+        <div>
+          <h1 className="text-4xl font-display font-bold tracking-tight uppercase flex items-center gap-3">
+            <div className="bg-primary p-2 rounded shadow-retail">
+              <Package className="w-8 h-8 text-white" />
+            </div>
+            Inventario <span className="text-primary">Global</span>
+          </h1>
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em] mt-2">Gestión de catálogo y existencias</p>
+        </div>
+        <button className="btn btn-primary h-14 px-8 shadow-retail font-display group" onClick={handleAdd}>
+          <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
+          NUEVO PRODUCTO
         </button>
       </div>
 
-      <div className="card bg-base-100 shadow-xl">
-        <div className="card-body">
-          <div className="flex gap-4 mb-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-50" />
-              <input type="text" placeholder="Buscar por nombre, SKU o código de barras..." className="input input-bordered w-full pl-10" />
-            </div>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        {[
+          { label: 'Total Productos', value: products.length, color: 'primary' },
+          { label: 'Bajo Stock', value: products.filter((p:any) => p.stock <= p.minStock).length, color: 'error' },
+          { label: 'Valor Inventario', value: `$${products.reduce((acc, p:any) => acc + (p.costPrice * p.stock), 0).toLocaleString()}`, color: 'slate-800' },
+          { label: 'Categorías', value: '8', color: 'slate-800' }
+        ].map((stat, i) => (
+          <div key={i} className={`bg-base-100 p-6 border-b-4 border-${stat.color === 'slate-800' ? 'slate-800' : stat.color} shadow-retail`}>
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">{stat.label}</p>
+            <p className={`text-2xl font-display font-bold text-${stat.color === 'slate-800' ? 'slate-900 dark:text-white' : stat.color}`}>{stat.value}</p>
           </div>
+        ))}
+      </div>
 
-          <div className="overflow-x-auto">
-            <table className="table table-zebra w-full">
-              <thead>
+      {/* Table Section */}
+      <div className="bg-base-100 shadow-2xl border-2 border-base-300">
+        <div className="p-6 border-b border-base-300 flex flex-col md:flex-row gap-4 justify-between items-center bg-base-100">
+          <div className="relative w-full md:w-96">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input 
+              type="text" 
+              placeholder="BUSCAR PRODUCTO..." 
+              className="input w-full pl-12 h-12 bg-base-200 border-none font-bold text-xs uppercase tracking-wider focus:ring-2 focus:ring-primary" 
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <div className="flex gap-2">
+            <button className="btn btn-ghost border-base-300 bg-base-200 uppercase text-[10px] font-bold tracking-widest"><Filter className="w-4 h-4 mr-2" /> Filtros</button>
+            <button className="btn btn-ghost border-base-300 bg-base-200 uppercase text-[10px] font-bold tracking-widest">Exportar CSV</button>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="table w-full">
+            <thead>
+              <tr className="bg-base-200/50 border-b-2 border-base-300">
+                <th className="uppercase text-[10px] font-bold tracking-widest text-slate-500 py-4">Producto</th>
+                <th className="uppercase text-[10px] font-bold tracking-widest text-slate-500 py-4">SKU / Código</th>
+                <th className="uppercase text-[10px] font-bold tracking-widest text-slate-500 py-4 text-right">Costo</th>
+                <th className="uppercase text-[10px] font-bold tracking-widest text-slate-500 py-4 text-right">Precio Venta</th>
+                <th className="uppercase text-[10px] font-bold tracking-widest text-slate-500 py-4 text-center">Stock Actual</th>
+                <th className="uppercase text-[10px] font-bold tracking-widest text-slate-500 py-4 text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-base-300">
+              {loading ? (
+                <tr><td colSpan={6} className="text-center py-20"><span className="loading loading-spinner text-primary"></span></td></tr>
+              ) : filteredProducts.length === 0 ? (
                 <tr>
-                  <th>Imagen</th>
-                  <th>Nombre</th>
-                  <th>SKU</th>
-                  <th>Costo</th>
-                  <th>Precio (con IVA)</th>
-                  <th>Stock</th>
-                  <th>Acciones</th>
+                  <td colSpan={6} className="text-center py-20 opacity-40">
+                    <PackageSearch className="w-12 h-12 mx-auto mb-2" />
+                    <p className="font-bold uppercase tracking-widest">Catálogo Vacío</p>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr><td colSpan={7} className="text-center py-4">Cargando...</td></tr>
-                ) : products.length === 0 ? (
-                  <tr><td colSpan={7} className="text-center py-4">No hay productos registrados</td></tr>
-                ) : (
-                  products.map((p: any) => (
-                    <tr key={p.id}>
-                      <td>
-                        <div className="avatar">
-                          <div className="mask mask-squircle w-12 h-12 bg-base-200">
-                            <img 
-                              src={p.imagePath ? `http://localhost:3001/${p.imagePath.replace(/\\/g, '/')}` : 'https://placehold.co/100x100?text=No+Foto'} 
-                              alt={p.name} 
-                              className="object-cover"
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).src = 'https://placehold.co/100x100?text=Error+Img';
-                              }}
-                            />
-                          </div>
+              ) : (
+                filteredProducts.map((p: any) => (
+                  <tr key={p.id} className="hover:bg-base-200/30 transition-colors group">
+                    <td>
+                      <div className="flex items-center gap-4">
+                        <div className="w-14 h-14 bg-base-200 border border-base-300 relative overflow-hidden flex-shrink-0">
+                          <img 
+                            src={p.imagePath ? `http://localhost:3001/${p.imagePath.replace(/\\/g, '/')}` : 'https://placehold.co/200x200?text=No+Img'} 
+                            alt={p.name} 
+                            className="object-cover w-full h-full group-hover:scale-110 transition-transform"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = 'https://placehold.co/200x200?text=Error';
+                            }}
+                          />
                         </div>
-                      </td>
-                      <td>
-                        <div className="font-bold">{p.name}</div>
-                        <div className="text-xs opacity-50">{p.brand} {p.model}</div>
-                      </td>
-                      <td>{p.sku || '-'}</td>
-                      <td>${p.costPrice}</td>
-                      <td>${p.priceTotal}</td>
-                      <td>
-                        <div className="flex items-center gap-2">
+                        <div>
+                          <div className="font-bold text-sm uppercase group-hover:text-primary transition-colors">{p.name}</div>
+                          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mt-1">{p.brand || 'Genérico'} • {p.model || 'N/A'}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold font-mono">{p.sku || '---'}</span>
+                        <span className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">{p.barcode || 'Sin código'}</span>
+                      </div>
+                    </td>
+                    <td className="text-right font-display font-bold text-slate-500">
+                      ${typeof p.costPrice === 'number' ? p.costPrice.toFixed(2) : Number(p.costPrice || 0).toFixed(2)}
+                    </td>
+                    <td className="text-right">
+                      <div className="flex flex-col items-end">
+                        <span className="font-display font-bold text-lg text-primary">
+                          ${typeof p.priceTotal === 'number' ? p.priceTotal.toFixed(2) : Number(p.priceTotal || 0).toFixed(2)}
+                        </span>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase">IVA Incluido</span>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="flex items-center gap-3">
                           <button 
-                            className="btn btn-xs btn-circle btn-outline btn-error"
+                            className="w-6 h-6 rounded bg-base-300 hover:bg-error hover:text-white flex items-center justify-center transition-colors disabled:opacity-30"
                             onClick={() => adjustStock(p.id, -1)}
                             disabled={p.stock <= 0}
                           >
                             <Minus className="w-3 h-3" />
                           </button>
                           
-                          <div className={`badge font-bold w-12 ${p.stock <= p.minStock ? 'badge-error' : 'badge-success'}`}>
+                          <div className={`text-xl font-display font-bold ${p.stock <= p.minStock ? 'text-error animate-pulse' : 'text-slate-900 dark:text-white'}`}>
                             {p.stock}
                           </div>
 
                           <button 
-                            className="btn btn-xs btn-circle btn-outline btn-success"
+                            className="w-6 h-6 rounded bg-base-300 hover:bg-success hover:text-white flex items-center justify-center transition-colors"
                             onClick={() => adjustStock(p.id, 1)}
                           >
                             <PlusCircle className="w-3 h-3" />
                           </button>
                         </div>
-                      </td>
-                      <td>
-                        <button className="btn btn-sm btn-ghost text-primary" onClick={() => handleEdit(p)}>Editar</button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Uni. Disponibles</span>
+                      </div>
+                    </td>
+                    <td className="text-center">
+                      <div className="flex justify-center gap-2 transition-opacity">
+                        <button className="btn btn-square btn-sm bg-base-200 border-base-300 hover:text-primary hover:bg-base-300" onClick={() => handleEdit(p)} title="Editar">
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button className="btn btn-square btn-sm bg-base-200 border-base-300 hover:text-slate-900 hover:bg-base-300" title="Opciones">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      <dialog id="product_modal" className="modal">
-        <div className="modal-box max-w-2xl">
-          <h3 className="font-bold text-lg mb-4">{editingProduct ? 'Editar Producto' : 'Agregar Nuevo Producto'}</h3>
-          <ProductForm
-            product={editingProduct}
-            onSuccess={() => {
-              (window as any).product_modal.close();
-              fetchProducts();
-            }}
-          />
+      <dialog id="product_modal" className="modal modal-bottom sm:modal-middle overflow-y-auto">
+        <div className="modal-box max-w-2xl bg-base-100 p-0 border-2 border-primary my-8">
+          <div className="bg-primary p-6 flex justify-between items-center text-white sticky top-0 z-10">
+            <h3 className="font-display font-bold text-xl uppercase tracking-tighter">
+              {editingProduct ? 'Modificar Registro' : 'Alta de Producto'}
+            </h3>
+            <div className="text-[10px] font-bold uppercase tracking-widest opacity-80">Retail Terminal v2.0</div>
+          </div>
+          <div className="p-8">
+            <ProductForm
+              product={editingProduct}
+              onSuccess={() => {
+                (window as any).product_modal.close();
+                fetchProducts();
+              }}
+            />
+          </div>
         </div>
-        <form method="dialog" className="modal-backdrop">
+        <form method="dialog" className="modal-backdrop bg-slate-900/80 backdrop-blur-sm">
           <button>close</button>
         </form>
       </dialog>
@@ -232,91 +304,89 @@ function ProductForm({ onSuccess, product }: { onSuccess: () => void, product?: 
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div className="form-control col-span-2">
-          <label className="label"><span className="label-text font-bold">Información Básica</span></label>
-          <input name="name" type="text" placeholder="Nombre del Producto" className="input input-bordered" defaultValue={product?.name} required />
-        </div>
-        <div className="form-control">
-          <label className="label"><span className="label-text">SKU</span></label>
-          <input name="sku" type="text" className="input input-bordered" defaultValue={product?.sku} />
-        </div>
-        <div className="form-control">
-          <label className="label"><span className="label-text">Código de Barras</span></label>
-          <input name="barcode" type="text" className="input input-bordered" defaultValue={product?.barcode} />
-        </div>
-        
-        <div className="form-control col-span-2">
-          <label className="label"><span className="label-text">Descripción</span></label>
-          <textarea name="description" className="textarea textarea-bordered" rows={2} defaultValue={product?.description}></textarea>
-        </div>
-
-        <div className="form-control">
-          <label className="label"><span className="label-text">Marca</span></label>
-          <input name="brand" type="text" className="input input-bordered" defaultValue={product?.brand} />
-        </div>
-        <div className="form-control">
-          <label className="label"><span className="label-text">Modelo</span></label>
-          <input name="model" type="text" className="input input-bordered" defaultValue={product?.model} />
+    <form onSubmit={handleSubmit} className="space-y-8">
+      <div className="grid grid-cols-2 gap-6">
+        {/* Info Section */}
+        <div className="col-span-2">
+          <p className="text-[10px] font-bold text-primary uppercase tracking-[0.3em] mb-4">Información del Producto</p>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="form-control col-span-2">
+              <label className="label py-1"><span className="label-text font-bold text-xs uppercase text-slate-500">Nombre Oficial</span></label>
+              <input name="name" type="text" className="input input-bordered h-12 bg-base-200 border-none font-bold text-sm uppercase tracking-wide" defaultValue={product?.name} required />
+            </div>
+            <div className="form-control">
+              <label className="label py-1"><span className="label-text font-bold text-xs uppercase text-slate-500">SKU (Interno)</span></label>
+              <input name="sku" type="text" className="input input-bordered h-12 bg-base-200 border-none font-bold text-sm" defaultValue={product?.sku} />
+            </div>
+            <div className="form-control">
+              <label className="label py-1"><span className="label-text font-bold text-xs uppercase text-slate-500">Código de Barras</span></label>
+              <input name="barcode" type="text" className="input input-bordered h-12 bg-base-200 border-none font-bold text-sm" defaultValue={product?.barcode} />
+            </div>
+          </div>
         </div>
 
-        <div className="form-control">
-          <label className="label"><span className="label-text">Empaque (ej. Caja 12p)</span></label>
-          <input name="packaging" type="text" className="input input-bordered" defaultValue={product?.packaging} />
-        </div>
-        <div className="form-control">
-          <label className="label"><span className="label-text">Ubicación Almacén</span></label>
-          <input name="warehouseLocation" type="text" className="input input-bordered" defaultValue={product?.warehouseLocation} />
-        </div>
-
-        <div className="form-control col-span-2">
-          <label className="label"><span className="label-text font-bold text-primary">Precios e Impuestos</span></label>
-        </div>
-
-        <div className="form-control">
-          <label className="label"><span className="label-text">Costo (Compra)</span></label>
-          <input name="costPrice" type="number" step="0.01" className="input input-bordered" defaultValue={product?.costPrice} required />
-        </div>
-        <div className="form-control">
-          <label className="label"><span className="label-text">Modo de Precio</span></label>
-          <select className="select select-bordered" value={mode} onChange={(e) => setMode(e.target.value)}>
-            <option value="INCLUDES_TAX">Precio incluye IVA</option>
-            <option value="EXCLUDES_TAX">Precio más IVA</option>
-          </select>
-        </div>
-        <div className="form-control col-span-2">
-          <label className="label"><span className="label-text font-bold">Precio de Venta</span></label>
-          <input name="inputValue" type="number" step="0.01" className="input input-bordered" defaultValue={product?.priceInputMode === 'INCLUDES_TAX' ? product?.priceTotal : product?.priceBase} required />
-          <p className="text-xs mt-1 opacity-70 italic">
-            "En México, normalmente los precios ya incluyen IVA."
-          </p>
+        {/* Pricing Section */}
+        <div className="col-span-2 pt-4 border-t border-base-300">
+          <p className="text-[10px] font-bold text-primary uppercase tracking-[0.3em] mb-4">Finanzas y Precios</p>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="form-control">
+              <label className="label py-1"><span className="label-text font-bold text-xs uppercase text-slate-500">Costo de Compra</span></label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-slate-400">$</span>
+                <input name="costPrice" type="number" step="0.01" className="input input-bordered h-12 pl-8 bg-base-200 border-none font-display font-bold text-lg" defaultValue={product?.costPrice} required />
+              </div>
+            </div>
+            <div className="form-control">
+              <label className="label py-1"><span className="label-text font-bold text-xs uppercase text-slate-500">Configuración IVA</span></label>
+              <select className="select select-bordered h-12 bg-base-200 border-none font-bold text-xs uppercase" value={mode} onChange={(e) => setMode(e.target.value)}>
+                <option value="INCLUDES_TAX">Precio incluye IVA</option>
+                <option value="EXCLUDES_TAX">Precio más IVA</option>
+              </select>
+            </div>
+            <div className="form-control col-span-2">
+              <label className="label py-1"><span className="label-text font-bold text-xs uppercase text-slate-500">Precio de Venta Sugerido</span></label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-primary">$</span>
+                <input name="inputValue" type="number" step="0.01" className="input input-bordered h-12 pl-8 bg-base-100 border-2 border-primary font-display font-bold text-2xl text-primary" defaultValue={product?.priceInputMode === 'INCLUDES_TAX' ? product?.priceTotal : product?.priceBase} required />
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="form-control col-span-2">
-          <label className="label"><span className="label-text font-bold text-secondary">Inventario</span></label>
+        {/* Stock Section */}
+        <div className="col-span-2 pt-4 border-t border-base-300">
+          <div className="flex justify-between items-center mb-4">
+            <p className="text-[10px] font-bold text-primary uppercase tracking-[0.3em]">Existencias</p>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <span className="text-[10px] font-bold uppercase text-slate-500">Track Stock</span>
+              <input name="trackStock" type="checkbox" className="checkbox checkbox-primary checkbox-sm" defaultChecked={product ? product.trackStock : true} />
+            </label>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="form-control">
+              <label className="label py-1"><span className="label-text font-bold text-xs uppercase text-slate-500">Stock Inicial</span></label>
+              <input name="stock" type="number" className="input input-bordered h-12 bg-base-200 border-none font-display font-bold text-xl" defaultValue={product?.stock || 0} required />
+            </div>
+            <div className="form-control">
+              <label className="label py-1"><span className="label-text font-bold text-xs uppercase text-slate-500">Ubicación</span></label>
+              <input name="warehouseLocation" type="text" className="input input-bordered h-12 bg-base-200 border-none font-bold text-sm uppercase" defaultValue={product?.warehouseLocation} placeholder="A-01-01" />
+            </div>
+          </div>
         </div>
 
-        <div className="form-control">
-          <label className="label"><span className="label-text font-bold">Stock Actual</span></label>
-          <input name="stock" type="number" className="input input-bordered border-secondary" defaultValue={product?.stock || 0} required />
-        </div>
-
-        <div className="form-control">
-          <label className="label cursor-pointer justify-start gap-4">
-            <span className="label-text font-bold">Controlar Inventario</span>
-            <input name="trackStock" type="checkbox" className="checkbox checkbox-secondary" defaultChecked={product ? product.trackStock : true} />
-          </label>
-        </div>
-
-        <div className="form-control col-span-2">
-          <label className="label"><span className="label-text font-bold">Imagen del Producto</span></label>
-          <input type="file" className="file-input file-input-bordered w-full" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+        {/* Image Section */}
+        <div className="col-span-2 pt-4 border-t border-base-300">
+           <label className="label py-1"><span className="label-text font-bold text-xs uppercase text-slate-500">Imagen Representativa</span></label>
+           <input type="file" className="file-input file-input-bordered w-full h-12 bg-base-200 border-none" onChange={(e) => setFile(e.target.files?.[0] || null)} />
         </div>
       </div>
-      <div className="modal-action">
-        <button type="submit" className={`btn btn-primary btn-block ${loading ? 'loading' : ''}`} disabled={loading}>
-          {loading ? 'Guardando...' : (product ? 'Actualizar Producto' : 'Guardar Producto')}
+
+      <div className="flex gap-3">
+        <button type="button" className="btn flex-1 h-14 bg-base-300 border-none uppercase font-bold text-xs tracking-widest shadow-retail" onClick={() => (window as any).product_modal.close()}>
+          Cancelar
+        </button>
+        <button type="submit" className={`btn flex-[2] h-14 btn-primary uppercase font-display font-bold text-sm tracking-widest shadow-retail ${loading ? 'loading' : ''}`} disabled={loading}>
+          {loading ? 'Procesando...' : (product ? 'Guardar Cambios' : 'Confirmar Alta')}
         </button>
       </div>
     </form>

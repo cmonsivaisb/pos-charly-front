@@ -1,15 +1,82 @@
 @import "tailwindcss";
 @plugin "daisyui";
 
-:root, [data-theme] {
-  color-scheme: light dark;
-}
+@import "@fontsource/plus-jakarta-sans/400.css";
+@import "@fontsource/plus-jakarta-sans/500.css";
+@import "@fontsource/plus-jakarta-sans/600.css";
+@import "@fontsource/plus-jakarta-sans/700.css";
+@import "@fontsource/space-grotesk/500.css";
+@import "@fontsource/space-grotesk/700.css";
 
-@theme inline {
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* No @config here to avoid eval errors */
+
+@theme {
+  --font-jakarta: "Plus Jakarta Sans", sans-serif;
+  --font-space: "Space Grotesk", sans-serif;
+
+  --font-sans: var(--font-jakarta);
+  --font-display: var(--font-space);
+  
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 6px;
+  --radius-xl: 6px;
+  --radius-2xl: 6px;
+  --radius-3xl: 6px;
+  --radius-full: 9999px;
 }
 
 body {
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-jakarta);
+  @apply antialiased min-h-screen transition-colors duration-300;
+  background-color: var(--color-base-100);
+  color: var(--color-base-content);
 }
+
+.font-display {
+  font-family: var(--font-space);
+}
+
+/* Custom Shadows */
+.shadow-retail {
+  box-shadow: 0 4px 0 0 rgba(0, 0, 0, 0.1);
+}
+
+.dark .shadow-retail {
+  box-shadow: 0 4px 0 0 rgba(0, 0, 0, 0.3);
+}
+
+/* POS Specifics */
+.pos-grid {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  height: calc(100vh - 64px);
+}
+
+.btn {
+  @apply uppercase tracking-wider font-bold;
+  border-radius: 6px;
+}
+
+/* Hardcode variables to ensure reliability if daisyUI evaluation fails in specific environments */
+[data-theme="darkretail"], .dark {
+  --color-primary: #F97316;
+  --color-base-100: #0F172A;
+  --color-base-200: #1E293B;
+  --color-base-300: #334155;
+  --color-base-content: #F8FAFC;
+}
+
+[data-theme="lightretail"] {
+  --color-primary: #EA580C;
+  --color-base-100: #F1F5F9;
+  --color-base-200: #FFFFFF;
+  --color-base-300: #E2E8F0;
+  --color-base-content: #0F172A;
+}
+
+.bg-base-100 { background-color: var(--color-base-100) !important; }
+.bg-base-200 { background-color: var(--color-base-200) !important; }
+.bg-base-300 { background-color: var(--color-base-300) !important; }
+.text-base-content { color: var(--color-base-content) !important; }
