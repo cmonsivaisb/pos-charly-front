@@ -110,29 +110,33 @@ export default function POSPage() {
           />
         </div>
 
-        <div className="flex-1 overflow-y-auto grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-2">
-                  {filteredProducts.map((p: any) => (
-                    <div
-                      key={p.id}
-                      className="card bg-base-100 shadow-sm hover:shadow-md cursor-pointer transition-shadow overflow-hidden border border-base-200"
-                      onClick={() => addToCart(p)}
-                    >
-                      <figure className="h-32 bg-base-200">
-                        <img 
-                          src={p.imagePath ? `http://localhost:3001/${p.imagePath.replace(/\\/g, '/')}` : 'https://placehold.co/200x150?text=Sin+Foto'} 
-                          alt={p.name}
-                          className="object-cover w-full h-full"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = 'https://placehold.co/200x150?text=Error+Img';
-                          }}
-                        />
-                      </figure>
-              <div className="card-body p-3">
-                <h3 className="font-bold text-xs truncate" title={p.name}>{p.name}</h3>
-                <p className="text-primary font-bold text-md">${p.priceTotal}</p>
-                <div className="flex justify-between items-center text-[10px] opacity-70">
-                  <span>Stock: {p.stock}</span>
-                  <span className="badge badge-xs">{p.sku || 'N/A'}</span>
+        <div className="flex-1 overflow-y-auto grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 p-2">
+          {filteredProducts.map((p: any) => (
+            <div
+              key={p.id}
+              className="card bg-base-100 shadow-sm hover:shadow-md cursor-pointer transition-shadow overflow-hidden border border-base-200 h-fit"
+              onClick={() => addToCart(p)}
+            >
+              <figure className="h-28 bg-base-200">
+                <img
+                  src={p.imagePath ? `http://localhost:3001/${p.imagePath.replace(/\\/g, '/')}` : 'https://placehold.co/200x150?text=Sin+Foto'}
+                  alt={p.name}
+                  className="object-cover w-full h-full"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = 'https://placehold.co/200x150?text=Error+Img';
+                  }}
+                />
+              </figure>
+              <div className="card-body p-2 gap-1">
+                <h3 className="font-bold text-[11px] leading-tight line-clamp-2 h-8" title={p.name}>
+                  {p.name}
+                </h3>
+                <div className="flex justify-between items-end mt-auto">
+                  <p className="text-primary font-bold text-sm">${p.priceTotal}</p>
+                  <div className="flex flex-col items-end text-[9px] opacity-70">
+                    <span>Stock: {p.stock}</span>
+                    <span className="truncate max-w-[60px]">{p.sku || 'N/A'}</span>
+                  </div>
                 </div>
               </div>
             </div>
