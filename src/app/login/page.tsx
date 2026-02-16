@@ -38,7 +38,8 @@ export default function LoginPage() {
       setAuth(user, accessToken, refreshToken);
       router.push('/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al iniciar sesión');
+      const message = err.response?.data?.message;
+      setError(Array.isArray(message) ? message.join(', ') : message || 'Error al iniciar sesión');
     } finally {
       setLoading(false);
     }

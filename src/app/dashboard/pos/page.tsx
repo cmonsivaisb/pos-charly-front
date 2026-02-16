@@ -73,9 +73,16 @@ export default function POSPage() {
       alert('Venta realizada con éxito');
       setCart([]);
       fetchProducts(); // Refresh stock
-    } catch (err) {
+    } catch (err: any) {
       console.error('Checkout error:', err);
-      alert('Error al realizar la venta');
+      const message = err.response?.data?.message;
+      if (Array.isArray(message)) {
+        alert(`Error: ${message.join(', ')}`);
+      } else if (message) {
+        alert(`Error: ${message}`);
+      } else {
+        alert('Error al realizar la venta');
+      }
     } finally {
       setIsProcessing(false);
     }

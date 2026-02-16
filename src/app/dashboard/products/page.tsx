@@ -162,6 +162,8 @@ function ProductForm({ onSuccess, product }: { onSuccess: () => void, product?: 
       priceInputMode: mode,
       inputValue: Number(formData.get('inputValue')),
       ivaRate: 0.16,
+      stock: Number(formData.get('stock')),
+      trackStock: formData.get('trackStock') === 'on',
     };
 
     try {
@@ -247,6 +249,22 @@ function ProductForm({ onSuccess, product }: { onSuccess: () => void, product?: 
           <p className="text-xs mt-1 opacity-70 italic">
             "En México, normalmente los precios ya incluyen IVA."
           </p>
+        </div>
+
+        <div className="form-control col-span-2">
+          <label className="label"><span className="label-text font-bold text-secondary">Inventario</span></label>
+        </div>
+
+        <div className="form-control">
+          <label className="label"><span className="label-text font-bold">Stock Actual</span></label>
+          <input name="stock" type="number" className="input input-bordered border-secondary" defaultValue={product?.stock || 0} required />
+        </div>
+
+        <div className="form-control">
+          <label className="label cursor-pointer justify-start gap-4">
+            <span className="label-text font-bold">Controlar Inventario</span>
+            <input name="trackStock" type="checkbox" className="checkbox checkbox-secondary" defaultChecked={product ? product.trackStock : true} />
+          </label>
         </div>
 
         <div className="form-control col-span-2">
