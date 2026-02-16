@@ -1,6 +1,8 @@
 'use client';
 
 import { useAuthStore } from '@/store/authStore';
+import { useEffect, useState } from 'react';
+import api from '@/lib/api';
 import { 
   Users, 
   ShoppingCart, 
@@ -12,11 +14,28 @@ import {
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const fetchStats = async () => {
+    try {
+      const res = await api.get('/sales/stats');
+      setData(res.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const stats = [
-    { name: 'Ventas de Hoy', value: '$0.00', icon: TrendingUp, color: 'text-success' },
-    { name: 'Productos', value: '0', icon: Package, color: 'text-info' },
-    { name: 'Clientes', value: '0', icon: Users, color: 'text-warning' },
+    { name: 'Ventas de Hoy', value: `$${data?.todaySales || '0.00'}`, icon: TrendingUp, color: 'text-success' },
+    { name: 'Productos', value: data?.productCount || '0', icon: Package, color: 'text-info' },
+    { name: 'Clientes', value: data?.customerCount || '0', icon: Users, color: 'text-warning' },
     { name: 'Suscripción', value: 'Activa', icon: CheckCircle2, color: 'text-primary' },
   ];
 
@@ -61,9 +80,23 @@ export default function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td colSpan={3} className="text-center py-8 opacity-50 italic">No hay ventas registradas hoy</td>
-                  </tr>
+                  {data?.recentSales?.length > 0 ? (
+                    data.recentSales.map((sale: any) => (
+                      <tr key={sale.folio}>
+                        <td className="font-bold">#{sale.folio}</td>
+                        <td className="font-bold text-primary">${sale.total}</td>
+                        <td>
+                          <div className="badge badge-success badge-sm text-[10px]">
+                            {sale.status}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={3} className="text-center py-8 opacity-50 italic">No hay ventas registradas hoy</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
