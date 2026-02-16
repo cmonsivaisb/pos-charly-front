@@ -40,7 +40,7 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="p-6">
+    <div className="p-6 bg-base-300 min-h-[calc(100vh-64px)] lg:min-h-screen">
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Bienvenido, {user?.email}</h1>
         <p className="opacity-70">Aquí tienes un resumen de tu negocio hoy.</p>

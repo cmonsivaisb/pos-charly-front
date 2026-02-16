@@ -12,7 +12,9 @@ import {
   Menu,
   ChevronRight,
   Users,
-  Receipt
+  Receipt,
+  Sun,
+  Moon
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -21,7 +23,7 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, logout } = useAuthStore();
+  const { user, logout, theme, setTheme } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
   const [isHydrated, setIsHydrated] = useState(false);
@@ -76,11 +78,20 @@ export default function DashboardLayout({
       <div className="drawer-side">
         <label htmlFor="my-drawer" className="drawer-overlay"></label>
         <div className="menu p-4 w-64 min-h-full bg-base-100 text-base-content border-r">
-          <div className="flex items-center gap-2 mb-8 px-2">
-            <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-primary-content font-bold">
-              PS
+          <div className="flex items-center justify-between mb-8 px-2">
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-primary-content font-bold">
+                PS
+              </div>
+              <span className="text-xl font-bold tracking-tight text-primary">POS SaaS</span>
             </div>
-            <span className="text-xl font-bold tracking-tight">POS SaaS</span>
+            <button 
+              className="btn btn-ghost btn-sm btn-circle"
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              title={`Cambiar a tema ${theme === 'dark' ? 'claro' : 'oscuro'}`}
+            >
+              {theme === 'dark' ? <Sun className="w-5 h-5 text-warning" /> : <Moon className="w-5 h-5 text-primary" />}
+            </button>
           </div>
 
           <ul className="space-y-2">

@@ -12,7 +12,9 @@ interface AuthState {
   user: User | null;
   accessToken: string | null;
   refreshToken: string | null;
+  theme: string;
   setAuth: (user: User, accessToken: string, refreshToken: string) => void;
+  setTheme: (theme: string) => void;
   logout: () => void;
 }
 
@@ -22,10 +24,12 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       accessToken: null,
       refreshToken: null,
+      theme: 'light',
       setAuth: (user, accessToken, refreshToken) => {
         localStorage.setItem('accessToken', accessToken);
         set({ user, accessToken, refreshToken });
       },
+      setTheme: (theme) => set({ theme }),
       logout: () => {
         localStorage.removeItem('accessToken');
         set({ user: null, accessToken: null, refreshToken: null });

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
-import { Package, Plus, Search } from 'lucide-react';
+import { Package, Plus, Search, Minus, PlusCircle } from 'lucide-react';
 
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
@@ -34,8 +34,32 @@ export default function ProductsPage() {
     (window as any).product_modal.showModal();
   };
 
+  const adjustStock = async (id: string, amount: number) => {
+    try {
+      const product = products.find((p: any) => p.id === id) as any;
+      if (!product) return;
+      
+      const newStock = Math.max(0, product.stock + amount);
+      
+      // Enviar actualización parcial
+      await api.patch(`/products/${id}`, { 
+        stock: newStock,
+        // Re-enviar campos requeridos por el DTO para evitar validación fallida
+        name: product.name,
+        costPrice: Number(product.costPrice),
+        priceInputMode: product.priceInputMode,
+        inputValue: product.priceInputMode === 'INCLUDES_TAX' ? Number(product.priceTotal) : Number(product.priceBase)
+      });
+      
+      fetchProducts();
+    } catch (err) {
+      console.error(err);
+      alert('Error al ajustar el stock');
+    }
+  };
+
   return (
-    <div className="p-6">
+    <div className="p-6 bg-base-300 min-h-[calc(100vh-64px)] lg:min-h-screen">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold flex items-center gap-2">
           <Package className="w-8 h-8" /> Productos
@@ -77,10 +101,11 @@ export default function ProductsPage() {
                     <tr key={p.id}>
                       <td>
                         <div className="avatar">
-                          <div className="mask mask-squircle w-12 h-12">
+                          <div className="mask mask-squircle w-12 h-12 bg-base-200">
                             <img 
                               src={p.imagePath ? `http://localhost:3001/${p.imagePath.replace(/\\/g, '/')}` : 'https://placehold.co/100x100?text=No+Foto'} 
                               alt={p.name} 
+                              className="object-cover"
                               onError={(e) => {
                                 (e.target as HTMLImageElement).src = 'https://placehold.co/100x100?text=Error+Img';
                               }}
@@ -96,8 +121,25 @@ export default function ProductsPage() {
                       <td>${p.costPrice}</td>
                       <td>${p.priceTotal}</td>
                       <td>
-                        <div className={`badge ${p.stock <= p.minStock ? 'badge-error' : 'badge-success'}`}>
-                          {p.stock}
+                        <div className="flex items-center gap-2">
+                          <button 
+                            className="btn btn-xs btn-circle btn-outline btn-error"
+                            onClick={() => adjustStock(p.id, -1)}
+                            disabled={p.stock <= 0}
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          
+                          <div className={`badge font-bold w-12 ${p.stock <= p.minStock ? 'badge-error' : 'badge-success'}`}>
+                            {p.stock}
+                          </div>
+
+                          <button 
+                            className="btn btn-xs btn-circle btn-outline btn-success"
+                            onClick={() => adjustStock(p.id, 1)}
+                          >
+                            <PlusCircle className="w-3 h-3" />
+                          </button>
                         </div>
                       </td>
                       <td>
