@@ -2,101 +2,231 @@
 
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
-import { CreditCard, CheckCircle, AlertCircle } from 'lucide-react';
+import { useAuthStore } from '@/store/authStore';
+import { toast } from 'react-hot-toast';
 
 export default function SubscriptionPage() {
+  const { user } = useAuthStore();
   const [status, setStatus] = useState<any>(null);
+  const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    fetchStatus();
+    fetchData();
   }, []);
 
-  const fetchStatus = async () => {
+  const fetchData = async () => {
     try {
-      const res = await api.get('/subscription/status');
-      setStatus(res.data);
-    } catch (err) {
-      console.error(err);
+      const [statusRes, requestsRes] = await Promise.all([
+        api.get('/payments/status'),
+        api.get('/payments/manual/my-requests'),
+      ]);
+      setStatus(statusRes.data);
+      setRequests(requestsRes.data);
+    } catch (error) {
+      console.error(error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handlePay = async () => {
+  const handleMPPayment = async () => {
     try {
-      await api.post('/subscription/activate-trial');
-      alert('Suscripción activada (Simulación)');
-      fetchStatus();
-    } catch (err) {
-      alert('Error al activar');
+      const response = await api.post('/payments/mercadopago/create-preference', {
+        entityType: 'SUBSCRIPTION',
+        entityId: user?.tenantId,
+        amount: 499,
+        description: 'Suscripción Mensual POS SaaS',
+      });
+      window.location.href = response.data.init_point;
+    } catch (error) {
+      toast.error('Error al iniciar pago con Mercado Pago');
     }
   };
 
-  if (loading) return <div className="p-6">Cargando...</div>;
+  const handleManualSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedFile) {
+      toast.error('Por favor selecciona una foto de tu comprobante');
+      return;
+    }
 
-  const isActive = status?.subscriptionStatus === 'ACTIVE';
+    setIsSubmitting(true);
+    try {
+      // 1. Crear la solicitud
+      const createRes = await api.post('/payments/manual/requests', { amount: '499.00', bankName: 'Manual Upload' });
+      const requestId = createRes.data.id;
+
+      // 2. Subir el comprobante
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      const token = useAuthStore.getState().accessToken;
+      const uploadRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001/api'}/payments/manual/requests/${requestId}/upload`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!uploadRes.ok) throw new Error('Error al subir comprobante');
+      
+      toast.success('Solicitud enviada con éxito');
+      setSelectedFile(null);
+      fetchData();
+    } catch (error) {
+      toast.error('Error al procesar la solicitud');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (loading) return <div className="p-8 text-center"><span className="loading loading-spinner loading-lg"></span></div>;
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Suscripción</h1>
+    <div className="p-8 max-w-5xl mx-auto">
+      <h1 className="text-3xl font-bold mb-8">Gestión de Suscripción</h1>
 
-      <div className={`card shadow-xl ${isActive ? 'bg-success text-success-content' : 'bg-warning text-warning-content'}`}>
-        <div className="card-body flex-row items-center gap-6">
-          {isActive ? <CheckCircle className="w-16 h-16" /> : <AlertCircle className="w-16 h-16" />}
-          <div>
-            <h2 className="card-title text-2xl">Estado: {status?.subscriptionStatus}</h2>
-            <p>
-              {isActive 
-                ? `Tu cuenta está activa. Próximo pago: ${new Date(status.nextPaymentDate).toLocaleDateString()}`
-                : 'Tu cuenta está en periodo de prueba por 15 días o requiere pago.'}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+        {/* Estado Actual */}
+        <div className="card bg-base-100 shadow-xl border-t-4 border-primary lg:col-span-1">
+          <div className="card-body">
+            <h2 className="card-title text-primary">Estado Actual</h2>
+            <div className="mt-4 flex flex-col items-center">
+              <div className={`text-xl font-bold px-4 py-2 rounded-lg ${
+                status?.subscriptionStatus === 'ACTIVE' 
+                  ? 'bg-success/20 text-success border border-success' 
+                  : 'bg-warning/20 text-warning border border-warning'
+              }`}>
+                {status?.subscriptionStatus || 'SIN ESTADO'}
+              </div>
+              {status?.nextPaymentDate && (
+                <p className="mt-4 text-sm font-medium opacity-70 text-center">
+                  Próximo pago:<br/>
+                  <span className="font-bold">{new Date(status.nextPaymentDate).toLocaleDateString()}</span>
+                </p>
+              )}
+            </div>
+            <div className="divider text-xs opacity-50 uppercase tracking-widest mt-8">Pagar con</div>
+            <button 
+              onClick={handleMPPayment} 
+              className="btn btn-primary btn-block"
+              disabled={status?.subscriptionStatus === 'ACTIVE'}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+              </svg>
+              Pagar con Mercado Pago
+            </button>
+            <p className="text-[10px] text-center opacity-70 mt-2 italic">
+              Activación automática inmediata
             </p>
+          </div>
+        </div>
+
+        {/* Pago Manual */}
+        <div className="card bg-base-100 shadow-xl border-t-4 border-secondary lg:col-span-2">
+          <div className="card-body">
+            <h2 className="card-title text-secondary">Depósito o Transferencia Bancaria</h2>
+            
+            <div className="bg-base-200 p-4 rounded-lg mt-2 text-sm grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="font-bold border-b border-base-300 mb-2 pb-1">Datos para pago:</p>
+                <p><strong>Monto:</strong> $499.00 MXN</p>
+                <p><strong>Banco:</strong> BBVA México</p>
+                <p><strong>CLABE:</strong> 0123 4567 8901 2345 67</p>
+                <p><strong>Concepto:</strong> {user?.tenantId.substring(0,8)}</p>
+              </div>
+              <div className="flex flex-col justify-center items-center border-l border-base-300 pl-4">
+                <p className="text-center font-bold mb-2">Sube tu comprobante aquí:</p>
+                <form onSubmit={handleManualSubmit} className="w-full space-y-3">
+                  <div className="form-control">
+                    <input 
+                      type="file" 
+                      className="file-input file-input-bordered file-input-secondary file-input-sm w-full"
+                      accept="image/*,application/pdf"
+                      onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                      required
+                    />
+                  </div>
+                  <button 
+                    type="submit" 
+                    className={`btn btn-secondary btn-sm btn-block ${isSubmitting ? 'loading' : ''}`}
+                    disabled={!selectedFile || isSubmitting}
+                  >
+                    Enviar Comprobante
+                  </button>
+                </form>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {!isActive && (
-        <div className="mt-10 grid md:grid-cols-2 gap-6">
-          <div className="card bg-base-100 shadow-xl border">
-            <div className="card-body">
-              <h2 className="card-title text-primary">Plan Software</h2>
-              <p className="text-4xl font-bold my-4">$499 <span className="text-sm font-normal text-slate-500">MXN/mes</span></p>
-              <div className="badge badge-outline mb-4 text-[10px] font-bold uppercase">Software y Soporte</div>
-              <ul className="space-y-3 mb-8">
-                <li className="flex items-center gap-2 text-sm font-medium">
-                  <CheckCircle className="w-4 h-4 text-success" /> Ventas ilimitadas
-                </li>
-                <li className="flex items-center gap-2 text-sm font-medium">
-                  <CheckCircle className="w-4 h-4 text-success" /> Soporte técnico
-                </li>
-                <li className="flex items-center gap-2 text-sm font-medium text-slate-400 italic">
-                  * Demo limitada por tiempo (15 días)
-                </li>
-              </ul>
-              <button className="btn btn-primary btn-block h-14" onClick={handlePay}>
-                <CreditCard className="w-4 h-4 mr-2" /> Pagar con PayPal
-              </button>
-            </div>
-          </div>
-
-          <div className="card bg-base-100 shadow-xl border">
-            <div className="card-body">
-              <h2 className="card-title">Pago Manual</h2>
-              <p className="text-sm opacity-70 mb-4">
-                Transfiere a la siguiente cuenta y sube tu comprobante.
-              </p>
-              <div className="bg-base-200 p-4 rounded-lg text-sm mb-6">
-                <p><strong>Banco:</strong> BBVA</p>
-                <p><strong>CLABE:</strong> 0123 4567 8901 2345 67</p>
-                <p><strong>Beneficiario:</strong> POS SaaS México</p>
-              </div>
-              <button className="btn btn-outline btn-block">
-                Reportar Pago
-              </button>
-            </div>
-          </div>
+      {/* Historial de solicitudes */}
+      <div className="mt-8">
+        <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Historial de Pagos Manuales
+        </h3>
+        <div className="overflow-x-auto bg-base-100 rounded-lg shadow">
+          <table className="table table-zebra w-full">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Monto</th>
+                <th>Estado</th>
+                <th>Comprobante</th>
+              </tr>
+            </thead>
+            <tbody>
+              {requests.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="text-center py-6 opacity-50 italic">No has registrado solicitudes de pago</td>
+                </tr>
+              ) : (
+                requests.map((req: any) => (
+                  <tr key={req.id}>
+                    <td>{new Date(req.createdAt).toLocaleDateString()}</td>
+                    <td className="font-medium">${req.amount}</td>
+                    <td>
+                      <span className={`badge badge-sm font-bold ${
+                        req.status === 'APPROVED' ? 'badge-success' : 
+                        req.status === 'REJECTED' ? 'badge-error' : 'badge-info'
+                      }`}>
+                        {req.status}
+                      </span>
+                      {req.adminComment && (
+                        <div className="text-[10px] opacity-70 italic max-w-[200px]" title={req.adminComment}>
+                          Nota: {req.adminComment}
+                        </div>
+                      )}
+                    </td>
+                    <td>
+                      {req.evidencePath ? (
+                        <a 
+                          href={`${process.env.NEXT_PUBLIC_API_BASE_URL?.replace('/api', '') || 'http://localhost:3001'}${req.evidencePath}`} 
+                          target="_blank" 
+                          className="btn btn-xs btn-outline btn-ghost"
+                        >
+                          Ver comprobante
+                        </a>
+                      ) : (
+                        <span className="text-xs text-error">Sin archivo</span>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
-      )}
+      </div>
     </div>
   );
 }
