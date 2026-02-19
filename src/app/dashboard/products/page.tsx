@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
-import { Package, Plus, Search, Minus, PlusCircle, Filter, MoreHorizontal, Edit2, PackageSearch, Trash2 } from 'lucide-react';
+import { Package, Plus, Search, Minus, PlusCircle, Filter, Edit2, PackageSearch, Trash2, Globe, Download } from 'lucide-react';
+import { getProductImageUrl, getCatalogImageUrl } from '@/lib/image-helper';
 
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
@@ -37,7 +38,6 @@ export default function ProductsPage() {
   };
 
   const handleEdit = (product: any) => {
-    // Asegurarse de que el stock sea un número
     setEditingProduct({
       ...product,
       stock: Number(product.stock)
@@ -48,6 +48,10 @@ export default function ProductsPage() {
   const handleAdd = () => {
     setEditingProduct(null);
     (window as any).product_modal.showModal();
+  };
+  
+  const handleCatalog = () => {
+    (window as any).catalog_modal.showModal();
   };
 
   const handleView = (product: any) => {
@@ -162,10 +166,16 @@ export default function ProductsPage() {
           </h1>
           <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em] mt-2">Gestión de catálogo y existencias</p>
         </div>
-        <button className="btn btn-primary h-14 px-8 shadow-retail font-display group" onClick={handleAdd}>
-          <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
-          NUEVO PRODUCTO
-        </button>
+        <div className="flex gap-2">
+            <button className="btn btn-neutral h-14 px-6 shadow-retail font-display group" onClick={handleCatalog}>
+                <Globe className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+                CATÁLOGO
+            </button>
+            <button className="btn btn-primary h-14 px-8 shadow-retail font-display group" onClick={handleAdd}>
+                <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
+                NUEVO PRODUCTO
+            </button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -276,11 +286,11 @@ export default function ProductsPage() {
                       <div className="flex items-center gap-4">
                         <div className="w-14 h-14 bg-base-200 border border-base-300 relative overflow-hidden flex-shrink-0">
                           <img 
-                            src={p.imagePath ? `http://localhost:3001/${p.imagePath.replace(/\\/g, '/')}` : 'https://placehold.co/200x200?text=No+Img'} 
+                            src={getProductImageUrl(p)} 
                             alt={p.name} 
                             className="object-cover w-full h-full group-hover:scale-110 transition-transform"
                             onError={(e) => {
-                              (e.target as HTMLImageElement).src = 'https://placehold.co/200x200?text=Error';
+                              (e.target as HTMLImageElement).src = '/catalog/placeholders/default.svg';
                             }}
                           />
                         </div>
@@ -420,7 +430,7 @@ export default function ProductsPage() {
               <div className="flex flex-col md:flex-row gap-8">
                 <div className="w-full md:w-1/2 aspect-square bg-base-200 border-2 border-base-300 rounded overflow-hidden">
                   <img 
-                    src={viewingProduct.imagePath ? `http://localhost:3001/${viewingProduct.imagePath.replace(/\\/g, '/')}` : 'https://placehold.co/400x400?text=Sin+Imagen'} 
+                    src={getProductImageUrl(viewingProduct)}
                     alt={viewingProduct.name}
                     className="w-full h-full object-cover"
                   />
@@ -494,6 +504,28 @@ export default function ProductsPage() {
                 (window as any).product_modal.close();
                 fetchProducts();
               }}
+            />
+          </div>
+        </div>
+        <form method="dialog" className="modal-backdrop bg-slate-900/80 backdrop-blur-sm">
+          <button>close</button>
+        </form>
+      </dialog>
+
+      <dialog id="catalog_modal" className="modal modal-bottom sm:modal-middle overflow-y-auto">
+        <div className="modal-box max-w-5xl bg-base-100 p-0 border-2 border-neutral my-8 h-[80vh]">
+          <div className="bg-neutral p-6 flex justify-between items-center text-white sticky top-0 z-10">
+            <h3 className="font-display font-bold text-xl uppercase tracking-tighter flex gap-2 items-center">
+                <Globe className="w-6 h-6" /> Catálogo Global
+            </h3>
+            <button className="btn btn-ghost btn-sm text-white" onClick={() => (window as any).catalog_modal.close()}>✕</button>
+          </div>
+          <div className="p-0 h-full overflow-hidden flex flex-col">
+            <CatalogView 
+                onSuccess={() => {
+                    fetchProducts();
+                    (window as any).catalog_modal.close();
+                }} 
             />
           </div>
         </div>
@@ -693,10 +725,8 @@ function ProductForm({ onSuccess, product }: { onSuccess: () => void, product?: 
             <div className="w-24 h-24 bg-base-200 border-2 border-dashed border-base-300 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
               {previewUrl ? (
                 <img src={previewUrl} className="w-full h-full object-cover" alt="Preview" />
-              ) : product?.imagePath ? (
-                <img src={`http://localhost:3001/${product.imagePath.replace(/\\/g, '/')}`} className="w-full h-full object-cover" alt="Current" />
               ) : (
-                <Package className="w-8 h-8 opacity-20" />
+                <img src={getProductImageUrl(product)} className="w-full h-full object-cover" alt="Current" onError={(e) => (e.target as HTMLImageElement).src='/catalog-images/placeholder.webp'} />
               )}
             </div>
             <input 
@@ -719,4 +749,194 @@ function ProductForm({ onSuccess, product }: { onSuccess: () => void, product?: 
       </div>
     </form>
   );
+}
+
+function CatalogView({ onSuccess }: { onSuccess: () => void }) {
+    const [categories, setCategories] = useState([]);
+    const [products, setProducts] = useState([]);
+    const [packs, setPacks] = useState([]);
+    const [view, setView] = useState<'products' | 'packs'>('products');
+    const [loading, setLoading] = useState(false);
+    const [search, setSearch] = useState('');
+    const [catFilter, setCatFilter] = useState('');
+
+    useEffect(() => {
+        fetchCategories();
+        fetchProducts();
+        fetchPacks();
+    }, []);
+
+    useEffect(() => {
+        const timeout = setTimeout(() => {
+            fetchProducts();
+        }, 500);
+        return () => clearTimeout(timeout);
+    }, [search, catFilter]);
+
+    const fetchCategories = async () => {
+        try {
+            const res = await api.get('/catalog/categories');
+            setCategories(res.data);
+        } catch(err) { console.error(err); }
+    };
+
+    const fetchProducts = async () => {
+        setLoading(true);
+        try {
+            let url = '/catalog/products?';
+            if(search) url += `query=${search}&`;
+            if(catFilter) url += `category=${catFilter}`;
+            const res = await api.get(url);
+            // Handle both direct array and paginated response
+            const data = Array.isArray(res.data) ? res.data : (res.data?.items || []);
+            setProducts(data);
+        } catch(err) { 
+            console.error(err);
+            setProducts([]);
+        }
+        finally { setLoading(false); }
+    };
+
+    const fetchPacks = async () => {
+        try {
+            const res = await api.get('/catalog/packs');
+            setPacks(res.data);
+        } catch(err) { console.error(err); }
+    };
+
+    const importProduct = async (catalogProductId: string, product: any) => {
+        // Simple confirm
+        if(!confirm(`¿Importar ${product.name}?`)) return;
+        
+        try {
+            await api.post(`/products/import-from-catalog/${catalogProductId}`, {});
+            alert('Producto importado correctamente');
+            onSuccess();
+        } catch(err: any) {
+            console.error(err);
+            if(err.response?.status === 409) {
+                alert('Este producto ya está en tu inventario');
+            } else {
+                alert('Error al importar');
+            }
+        }
+    };
+
+    const importPack = async (packCode: string, pack: any) => {
+        if(!confirm(`¿Importar Pack ${pack.name}?`)) return;
+        try {
+            const res = await api.post(`/products/import-pack/${packCode}`, { mode: 'MERGE' });
+            const imported = res.data.results.filter((r:any) => r.status === 'imported').length;
+            alert(`Pack importado. ${imported} productos nuevos agregados.`);
+            onSuccess();
+        } catch(err) {
+            console.error(err);
+            alert('Error al importar pack');
+        }
+    };
+
+    return (
+        <div className="flex h-full">
+            {/* Sidebar Filters */}
+            <div className="w-64 bg-base-200 p-6 flex-shrink-0 border-r border-base-300 overflow-y-auto">
+                <h4 className="font-bold text-xs uppercase tracking-widest text-slate-500 mb-4">Modo</h4>
+                <div className="join w-full mb-6 shadow-sm">
+                    <button className={`join-item btn btn-sm flex-1 ${view === 'products' ? 'btn-neutral' : 'btn-ghost bg-base-100'}`} onClick={() => setView('products')}>Productos</button>
+                    <button className={`join-item btn btn-sm flex-1 ${view === 'packs' ? 'btn-neutral' : 'btn-ghost bg-base-100'}`} onClick={() => setView('packs')}>Packs</button>
+                </div>
+
+                {view === 'products' && (
+                    <>
+                        <h4 className="font-bold text-xs uppercase tracking-widest text-slate-500 mb-4">Categorías</h4>
+                        <ul className="menu bg-base-100 rounded-box p-2 text-xs font-bold uppercase w-full">
+                            <li><a className={!catFilter ? 'active' : ''} onClick={() => setCatFilter('')}>Todas</a></li>
+                            {categories.map((c: any) => (
+                                <li key={c.id}><a className={catFilter === c.slug ? 'active' : ''} onClick={() => setCatFilter(c.slug)}>{c.name}</a></li>
+                            ))}
+                        </ul>
+                    </>
+                )}
+            </div>
+
+            {/* Main Content */}
+            <div className="flex-1 flex flex-col h-full overflow-hidden bg-base-100">
+                {/* Search Bar */}
+                <div className="p-4 border-b border-base-300 bg-base-100">
+                    <div className="relative">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <input 
+                            type="text" 
+                            placeholder={view === 'products' ? "Buscar en catálogo global..." : "Buscar packs..."}
+                            className="input input-bordered w-full pl-12 h-12 bg-base-200 border-none font-bold text-sm uppercase tracking-wide"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
+                    </div>
+                </div>
+
+                {/* Grid */}
+                <div className="flex-1 overflow-y-auto p-6">
+                    {loading ? (
+                         <div className="flex justify-center py-20"><span className="loading loading-spinner text-primary"></span></div>
+                    ) : view === 'products' ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {Array.isArray(products) && products.map((p: any) => (
+                                <div key={p.id} className="card card-compact bg-base-100 border border-base-200 hover:border-primary transition-colors group shadow-sm">
+                                    <figure className="h-32 bg-base-200 relative">
+                                         <img 
+                                            src={getCatalogImageUrl(p, p.category, '')} 
+                                            alt={p.name} 
+                                            className="h-full object-contain p-2"
+                                            onError={(e) => (e.target as HTMLImageElement).src='/catalog/placeholders/default.svg'}
+                                        />
+                                        <div className="absolute top-2 right-2 badge badge-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity">{p.brand}</div>
+                                    </figure>
+                                    <div className="card-body">
+                                        <h3 className="card-title text-sm font-bold uppercase leading-tight">
+                                            {p.brand ? `${p.brand} — ${p.name}` : p.name}
+                                        </h3>
+                                        <div className="flex justify-between items-end mt-2">
+                                            <div>
+                                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{p.sizeValue} {p.sizeUnit}</p>
+                                                <p className="font-display font-bold text-lg text-primary">${Number(p.priceTotal).toFixed(2)}</p>
+                                            </div>
+                                            <button className="btn btn-sm btn-circle btn-primary shadow-retail" onClick={() => importProduct(p.id, p)}>
+                                                <Download className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                            {products.length === 0 && <div className="col-span-full text-center py-20 opacity-50 font-bold uppercase text-sm">No se encontraron productos</div>}
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 gap-4">
+                            {packs.map((pack: any) => (
+                                <div key={pack.id} className="card bg-base-100 border border-base-200 shadow-sm">
+                                    <div className="card-body">
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <h3 className="card-title font-bold uppercase">{pack.name}</h3>
+                                                <p className="text-sm text-slate-500 mb-4">{pack.description}</p>
+                                                <div className="flex gap-2 flex-wrap">
+                                                    {pack.items.map((item: any) => (
+                                                        <div key={item.id} className="badge badge-outline text-xs font-bold uppercase">
+                                                            {item.quantity}x {item.catalogProduct.name}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <button className="btn btn-primary shadow-retail font-bold uppercase text-xs tracking-widest" onClick={() => importPack(pack.code, pack)}>
+                                                <Download className="w-4 h-4 mr-2" /> Importar Pack
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
 }
