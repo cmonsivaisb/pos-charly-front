@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@fontsource/plus-jakarta-sans": "^5.2.8",
+    "@fontsource/space-grotesk": "^5.2.10",
     "@hookform/resolvers": "^5.2.2",
     "axios": "^1.13.5",
     "jwt-decode": "^4.0.0",
