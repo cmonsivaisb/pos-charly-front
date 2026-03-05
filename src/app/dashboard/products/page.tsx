@@ -540,18 +540,6 @@ export default function ProductsPage() {
 function ProductForm({ onSuccess, product }: { onSuccess: () => void, product?: any }) {
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState(product?.priceInputMode || 'INCLUDES_TAX');
-  const [file, setFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
-      return () => URL.revokeObjectURL(url);
-    } else {
-      setPreviewUrl(null);
-    }
-  }, [file]);
 
   useEffect(() => {
     if (product) {
@@ -584,18 +572,10 @@ function ProductForm({ onSuccess, product }: { onSuccess: () => void, product?: 
     };
 
     try {
-      let productId = product?.id;
       if (product) {
         await api.patch(`/products/${product.id}`, data);
       } else {
-        const res = await api.post('/products', data);
-        productId = res.data.id;
-      }
-      
-      if (file) {
-        const imageFormData = new FormData();
-        imageFormData.append('file', file);
-        await api.post(`/products/${productId}/image`, imageFormData);
+        await api.post('/products', data);
       }
 
       onSuccess();
@@ -723,18 +703,9 @@ function ProductForm({ onSuccess, product }: { onSuccess: () => void, product?: 
           <label className="label py-1"><span className="label-text font-bold text-xs uppercase text-slate-500">Imagen Representativa</span></label>
           <div className="flex gap-4 items-start">
             <div className="w-24 h-24 bg-base-200 border-2 border-dashed border-base-300 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
-              {previewUrl ? (
-                <img src={previewUrl} className="w-full h-full object-cover" alt="Preview" />
-              ) : (
-                <img src={getProductImageUrl(product)} className="w-full h-full object-cover" alt="Current" onError={(e) => (e.target as HTMLImageElement).src='/catalog-images/placeholder.webp'} />
-              )}
+              <img src={getProductImageUrl(product)} className="w-full h-full object-cover" alt="Current" onError={(e) => (e.target as HTMLImageElement).src='/catalog-images/placeholder.webp'} />
             </div>
-            <input 
-              type="file" 
-              className="file-input file-input-bordered flex-1 h-12 bg-base-200 border-none" 
-              accept="image/*"
-              onChange={(e) => setFile(e.target.files?.[0] || null)} 
-            />
+            <div className="text-xs opacity-60 pt-2">Subidas de imagen deshabilitadas.</div>
           </div>
         </div>
       </div>

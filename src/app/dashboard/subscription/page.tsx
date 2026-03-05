@@ -10,7 +10,6 @@ export default function SubscriptionPage() {
   const [status, setStatus] = useState<any>(null);
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -48,34 +47,12 @@ export default function SubscriptionPage() {
 
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedFile) {
-      toast.error('Por favor selecciona una foto de tu comprobante');
-      return;
-    }
 
     setIsSubmitting(true);
     try {
-      // 1. Crear la solicitud
-      const createRes = await api.post('/payments/manual/requests', { amount: '499.00', bankName: 'Manual Upload' });
-      const requestId = createRes.data.id;
+      await api.post('/payments/manual/requests', { amount: '499.00', bankName: 'Manual Upload' });
 
-      // 2. Subir el comprobante
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-
-      const token = useAuthStore.getState().accessToken;
-      const uploadRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001/api'}/payments/manual/requests/${requestId}/upload`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      if (!uploadRes.ok) throw new Error('Error al subir comprobante');
-      
       toast.success('Solicitud enviada con éxito');
-      setSelectedFile(null);
       fetchData();
     } catch (error) {
       toast.error('Error al procesar la solicitud');
@@ -141,23 +118,15 @@ export default function SubscriptionPage() {
                 <p><strong>Concepto:</strong> {user?.tenantId.substring(0,8)}</p>
               </div>
               <div className="flex flex-col justify-center items-center border-l border-base-300 pl-4">
-                <p className="text-center font-bold mb-2">Sube tu comprobante aquí:</p>
+                <p className="text-center font-bold mb-2">Comprobante deshabilitado:</p>
                 <form onSubmit={handleManualSubmit} className="w-full space-y-3">
-                  <div className="form-control">
-                    <input 
-                      type="file" 
-                      className="file-input file-input-bordered file-input-secondary file-input-sm w-full"
-                      accept="image/*,application/pdf"
-                      onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                      required
-                    />
-                  </div>
-                  <button 
-                    type="submit" 
+                  <div className="text-xs opacity-60 text-center">No se admiten subidas de archivos por el momento.</div>
+                  <button
+                    type="submit"
                     className={`btn btn-secondary btn-sm btn-block ${isSubmitting ? 'loading' : ''}`}
-                    disabled={!selectedFile || isSubmitting}
+                    disabled={isSubmitting}
                   >
-                    Enviar Comprobante
+                    Enviar Solicitud
                   </button>
                 </form>
               </div>
